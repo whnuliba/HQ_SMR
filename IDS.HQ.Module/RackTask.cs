@@ -1,0 +1,29 @@
+﻿using IDS.Base;
+
+namespace IDS.HQ.Module
+{
+    public class RackTask:IdsLongBaseEntity
+    {
+
+        public string? RackNo { get; set; }
+        public int? TaskState { get; set; }
+        public string? PPID { get; set; }
+        public int? Location { get; set; }
+        public int? TaskType { get; set; }
+        public string? TaskDescription { get; set; }
+        public string? MaterialNo { get; set; }
+        public string? MaterialName { get; set; }
+    }
+
+
+
+}
+
+
+
+
+
+
+
+
+ 

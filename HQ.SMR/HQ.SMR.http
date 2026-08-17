@@ -1,0 +1,6 @@
+@HQ.SMR_HostAddress = http://localhost:5003
+
+GET {{HQ.SMR_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

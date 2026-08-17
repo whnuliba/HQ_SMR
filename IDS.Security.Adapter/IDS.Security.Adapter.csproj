@@ -1,0 +1,14 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\IDS.Security.Jwt\IDS.Security.Jwt.csproj" />
+    <ProjectReference Include="..\IDS.Security.Service\IDS.Security.Service.csproj" />
+  </ItemGroup>
+
+</Project>

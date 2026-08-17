@@ -1,0 +1,38 @@
+<Solution>
+  <Folder Name="/IDS.Framework/">
+    <Project Path="IDS.Base/IDS.Base.csproj" />
+    <Project Path="IDS.Common/IDS.Common.csproj" />
+    <Project Path="IDS.DAC.Core/IDS.DAC.Core.csproj" />
+    <Project Path="IDS.DAC.S7Connect/IDS.DAC.S7Connect.csproj" />
+    <Project Path="IDS.Extension/IDS.Extension.csproj" />
+    <Project Path="IDS.Ioc/IDS.Ioc.csproj" />
+    <Project Path="IDS.Persistence/IDS.Persistence.csproj" />
+    <Project Path="IDS.Tcp/IDS.Tcp.csproj" />
+  </Folder>
+  <Folder Name="/IDS.HQ/">
+    <Project Path="IDS.Device.Communication/IDS.Device.Communication.csproj" />
+    <Project Path="IDS.Extend.HYDevice/IDS.Extend.HYDevice.csproj" Id="e4cb45d4-85ae-445a-8b33-62532420a77d" />
+    <Project Path="IDS.HQ.Controller/IDS.HQ.Controller.csproj" Id="d15b78c9-6adf-4a28-970b-d31e8cafd6de" />
+    <Project Path="IDS.HQ.HYDevice.Protocol/IDS.HQ.HYDevice.Protocol.csproj" Id="f3e7554e-1740-4e83-b7c7-019066dddfa2" />
+    <Project Path="IDS.HQ.Module/IDS.HQ.Module.csproj" Id="cd905b91-37ab-4af2-8fd7-1a137a55aef3" />
+    <Project Path="IDS.HQ.Service/IDS.HQ.Service.csproj" Id="e984cba0-2472-4588-bfec-9aff5411598f" />
+    <Project Path="IDS.SMR.Bootstrap/IDS.HY.SMR.Bootstrap.csproj" Id="65d5d6f9-1424-42e8-b33f-4ced0e2fd797" />
+  </Folder>
+  <Folder Name="/IDS.Security/">
+    <Project Path="IDS.Security.Adapter/IDS.Security.Adapter.csproj" />
+    <Project Path="IDS.Security.Api.Controller/IDS.Security.Api.Controller.csproj" />
+    <Project Path="IDS.Security.IService/IDS.Security.IService.csproj" />
+    <Project Path="IDS.Security.Jwt/IDS.Security.Jwt.csproj" />
+    <Project Path="IDS.Security.Module/IDS.Security.Module.csproj" />
+    <Project Path="IDS.Security.Service/IDS.Security.Service.csproj" />
+  </Folder>
+  <Folder Name="/IDS.Z.Test/">
+    <Project Path="IDS.Test.SocketClient/IDS.Test.SocketClient.csproj" />
+    <Project Path="IDS.Test.SocketServer/IDS.Test.SocketServer.csproj" />
+  </Folder>
+  <Folder Name="/解决方案项/">
+    <File Path="readme.txt" />
+  </Folder>
+  <Project Path="HQ.SMR/HQ.SMR.csproj" />
+  <Project Path="IDS.Security.Startup/IDS.Security.Startup.csproj" />
+</Solution>

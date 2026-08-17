@@ -1,0 +1,25 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Autofac.Extras.Quartz" Version="10.0.0" />
+    <PackageReference Include="Microsoft.ClearScript" Version="7.4.5" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="Quartz" Version="3.13.0" />
+    <PackageReference Include="Quartz.AspNetCore" Version="3.13.0" />
+    <PackageReference Include="Quartz.Serialization.Json" Version="3.13.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\IDS.Common\IDS.Common.csproj" />
+    <ProjectReference Include="..\IDS.Extension\IDS.Extension.csproj" />
+    <ProjectReference Include="..\IDS.Ioc\IDS.Ioc.csproj" />
+    <ProjectReference Include="..\IDS.Persistence\IDS.Persistence.csproj" />
+  </ItemGroup>
+
+</Project>

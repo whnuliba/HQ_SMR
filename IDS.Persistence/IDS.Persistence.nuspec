@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package >
+  <metadata>
+    <id>IDS.Persistence</id>
+    <version>1.0.0</version>
+    <title>IDS.Persistence</title>
+    <authors>WH</authors>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <license type="expression">MIT</license>
+    <!-- <icon>icon.png</icon> -->
+    <projectUrl>http://project_url_here_or_delete_this_line/</projectUrl>
+    <description>IDS.Persistence</description>
+    <releaseNotes>Summary of changes made in this release of the package.</releaseNotes>
+    <copyright>@W</copyright>
+    <tags>Tag1 Tag2</tags>
+	 <dependencies>
+		 <group targetFramework=".net8" >
+			 <dependency id="MongoDB.Driver" version="2.29.0" />
+			 <dependency id="Microsoft.EntityFrameworkCore" version="8.0.7" />
+			 <dependency id="Microsoft.Extensions.Caching.StackExchangeRedis" version="8.0.7" />
+			 <dependency id="MySql.Data" version="9.0.0" />
+			 <dependency id="Pomelo.EntityFrameworkCore.MySql" version="8.0.2" />
+			 <dependency id="StackExchange.Redis" version="2.8.0" />
+			 <dependency id="IDS.Base" version="1.0.0" />
+			 <dependency id="IDS.Extension" version="1.0.0" />
+			 <dependency id="Npgsql.EntityFrameworkCore.PostgreSQL" version="8.0.4" />
+			 <dependency id="Microsoft.EntityFrameworkCore.SqlServer" version="8.0.7" />
+			 <dependency id="Oracle.EntityFrameworkCore" version="8.23.50" />
+			 <dependency id="Oracle.EntityFrameworkCore" version="8.23.50" />
+			 <dependency id="linq2db.EntityFrameworkCore" version="8.1.0" />
+		 </group>
+	 </dependencies>
+  </metadata>
+	<files>
+		<file src="*.dll" target="lib/net8" />
+		<file src="*.pdb" target="lib/net8" />
+	</files>
+</package>
