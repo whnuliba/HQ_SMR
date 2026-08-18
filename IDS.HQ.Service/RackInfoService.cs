@@ -89,7 +89,7 @@ namespace IDS.HQ.Service
                     rackinfos.AddRange(rack);
                 }
 
-                for (int i = rackInfo.BSideStartIndex; i < rackInfo.BSideStartIndex + rackInfo.BSideCount; i++)
+                for (int i = rackInfo.ASideStartIndex+ rackInfo.ASideCount; i < rackInfo.BSideStartIndex + rackInfo.BSideCount+ rackInfo.ASideCount; i++)
                 {
                     long id = IdUtils.Id;
                     var rack = new RackInfo()
