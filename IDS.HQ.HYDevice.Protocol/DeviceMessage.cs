@@ -31,19 +31,17 @@ namespace IDS.HQ.HYDevice.Protocol
             int num = 18 + alarmAddrs.Count * 2;
             byte[] data = new byte[alarmAddrs.Count];
             byte[] array = new byte[num-13];
-            array[0] = (byte)(num + 2);
-            array[1] = 28;
-            array[2] = side;
-            array[3] = (byte)alarmMode;
-            array[4] = (byte)locationMode;
+            array[0] = side;
+            array[1] = (byte)alarmMode;
+            array[2] = (byte)locationMode;
             string strLength = alarmAddrs.Count.ToString("x").PadLeft(4, '0');
-            array[5] = Convert.ToByte(strLength.Substring(0, 2), 16);
-            array[6] = Convert.ToByte(strLength.Substring(2), 16);
+            array[3] = Convert.ToByte(strLength.Substring(0, 2), 16);
+            array[4] = Convert.ToByte(strLength.Substring(2), 16);
             for (int j = 0; j < alarmAddrs.Count; j++)
             {
                 string addrStr = alarmAddrs[j].ToString("x").PadLeft(4, '0');
-                array[6 + 2 * j + 1] = Convert.ToByte(addrStr.Substring(0, 2), 16);
-                array[6 + 2 * j + 2] = Convert.ToByte(addrStr.Substring(2), 16);
+                array[4 + 2 * j + 1] = Convert.ToByte(addrStr.Substring(0, 2), 16);
+                array[4 + 2 * j + 2] = Convert.ToByte(addrStr.Substring(2), 16);
             }
             return GetMessage((byte)(num + 2), 28, data);
 

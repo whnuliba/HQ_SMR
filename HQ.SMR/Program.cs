@@ -2,6 +2,7 @@ using Autofac;
 using HQ.SMR;
 using IDS.Common;
 using IDS.Device.Communication;
+using IDS.Extend.HYDevice;
 using IDS.HQ.Module;
 using IDS.Ioc;
 using IDS.Persistence;
@@ -60,6 +61,15 @@ public partial class Program
             options.SerializerSettings.DateFormatString = "yyyy-MM-dd HH:mm:ss";
             // 在这里可以配置其他Newtonsoft.Json的设置
         });
+
+        // 在添加 Autofac 容器之后注册
+        builder.Services.AddHostedService<AppInitializationService>();
+
+        // 如果你有多个 IHostedService，希望这个初始化服务先于其他后台任务执行，
+        // 可以使用下面的方式调整顺序（需要安装 Microsoft.Extensions.Hosting.Abstractions）
+        builder.Services.AddSingleton<IHostedService, AppInitializationService>(sp =>
+            new AppInitializationService(sp, sp.GetRequiredService<ILogger<AppInitializationService>>()));
+
         #region  开启UDP监听
         ushort smrSocketPort = 9999;
         if (ushort.TryParse(configuration.GetSection("HQ_SMR:SocketConnection:Port").Value, out ushort port)) {
@@ -69,9 +79,10 @@ public partial class Program
 
         IServerConnection serverConnection = new HYBootstrap().RegisterServiceAndStartup(new IdsEndPoint(ip, smrSocketPort));
         //注册全局连接器
-        ServerConnectionHolder.SetConnection(serverConnection);
+       // ServerConnectionHolder.SetConnection(serverConnection);
         #endregion
-
+        //初始化货架缓存
+       // SmartMaterialRackNode.Instance.Initialize();
         builder.Services.AddControllers();
         // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
         builder.Services.AddEndpointsApiExplorer();

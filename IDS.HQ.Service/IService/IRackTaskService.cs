@@ -8,5 +8,7 @@ namespace IDS.HQ.Service
     public interface IRackTaskService : IDbLongBaseService<RackTask>
     { 
         IdsResult<RackTask> Putway(RackTask data);
+        IdsResult<RackTask> Outbound(RackTask rackTask);
+
     }
 }

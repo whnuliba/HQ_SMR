@@ -2,6 +2,7 @@
 using IDS.Base;
 using IDS.Common;
 using IDS.Common.Utils;
+using IDS.Extend.HYDevice;
 using IDS.HQ.Module;
 using IDS.HQ.Module.DTO;
 using IDS.Ioc;
@@ -26,6 +27,8 @@ namespace IDS.HQ.Service
         public IdsRedis RedisClient { get; set; }
         public IDbContextFactory<RackDbContext> DbContextFactory { get; set; }
         public object _obj_lock = new object();
+        private string _rackNodeCacheKey = "HQ:HY:RACKNODE:"; //料架
+
         public override RackDbContext DbContext()
         {
             return DbContextFactory.CreateDbContext();
@@ -46,9 +49,26 @@ namespace IDS.HQ.Service
                     var _rackinfo = ctx.Count<RackInfo>(f => f.RackNo == rackInfo.RackNo);
                     if (_rackinfo > 0)
                         return IdsResult<object>.failure($"当前货架已经注册：{JsonConvert.SerializeObject(rackInfo)}");
+                    _rackinfo = ctx.Count<RackInfo>(f => f.IP == rackInfo.IP);
+                    if (_rackinfo > 0)
+                        return IdsResult<object>.failure($"当前货架已经注册：{JsonConvert.SerializeObject(rackInfo)}");
 
                 }
 
+                //报货架注册到redis
+                var rackNode = new Rack() {
+
+                    RackNo = rackInfo.RackNo,
+                    RackSide = rackInfo.ASide,
+                    IP = rackInfo.IP,
+                    Port = rackInfo.Port,
+                    Inductive = 1,
+                    Enable = 1,
+                    Id = IdUtils.Id,
+                    ASideQty= rackInfo.ASideCount,
+                    BSideQty = rackInfo.ASideCount,
+                };
+                rackNode.saveInit();
                 //构造货架信息
                 var rackinfos = new List<RackInfo>();
                 for (int i = rackInfo.ASideStartIndex; i < rackInfo.ASideStartIndex + rackInfo.ASideCount; i++)
@@ -58,6 +78,8 @@ namespace IDS.HQ.Service
                     {
                         RackNo = rackInfo.RackNo,
                         RackSide = rackInfo.ASide,
+                        IP = rackInfo.IP,
+                        Port= rackInfo.Port,
                         Inductive = 1,
                         Location = i,
                         Enable = 1,
@@ -72,6 +94,8 @@ namespace IDS.HQ.Service
                     long id = IdUtils.Id;
                     var rack = new RackInfo()
                     {
+                        IP = rackInfo.IP,
+                        Port = rackInfo.Port,
                         RackNo = rackInfo.RackNo,
                         RackSide = rackInfo.BSide,
                         Inductive = 1,
@@ -95,7 +119,20 @@ namespace IDS.HQ.Service
                             // 可选：设置超时时间
                             //BulkCopyTimeout = 120
                         };
+ 
+                        ctx.Insert(rackNode);
                         ctx.BulkCopy(options, rackinfos);
+                        //节点写入到缓存
+                        RedisClient.GetDatabase().HashSet(_rackNodeCacheKey, rackInfo.IP,JsonConvert.SerializeObject(rackNode));
+
+                        var node = new RackNode
+                        {
+                            No = rackInfo.RackNo,
+                            IP = rackInfo.IP,
+                            Port = (ushort)rackInfo.Port,
+                            Enabled = "Y",
+                        };
+                        SmartMaterialRackNode.Instance.AddNode(node);
                         ts.Complete();
                     }
 
@@ -107,6 +144,9 @@ namespace IDS.HQ.Service
         }
         public IdsResult<object> CheckRegisterInfo(RegisterRackInfoDto rackInfo)
         {
+            // 1. 校验字符串属性：不能为 null、空字符串或纯空格
+            if (string.IsNullOrWhiteSpace(rackInfo.IP))
+                return IdsResult<object>.failure("货架IP地址不能为空");
             // 1. 校验字符串属性：不能为 null、空字符串或纯空格
             if (string.IsNullOrWhiteSpace(rackInfo.RackNo))
                 return IdsResult<object>.failure("货架编号不能为空");
@@ -120,7 +160,10 @@ namespace IDS.HQ.Service
             // 2. 校验整型属性：不能小于 0
             if (rackInfo.ASideCount < 0)
                 return IdsResult<object>.failure("A面数量不能小于0");
-
+            if (rackInfo.Port < 0)
+                return IdsResult<object>.failure("端口不能小于0");
+            if (rackInfo.Port < 1024)
+                return IdsResult<object>.failure("端口不能小于1024");
             if (rackInfo.ASideStartIndex < 0)
                 return IdsResult<object>.failure("A面起始索引不能小于0");
 

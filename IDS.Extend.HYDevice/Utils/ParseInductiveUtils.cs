@@ -38,11 +38,7 @@ namespace IDS.Extend.HYDevice.Utils
                 int dataLength = cmd[13] * 256 + cmd[14];
 
                 // 4. 检查数据长度是否有效
-                if (dataLength <= 2 || cmd.Length < dataLength + 2)
-                {
-                    return false;
-                }
-
+   
                 // 5. 提取 CRC 校验数据（从开头到 dataLength 位置，不包含最后 2 字节 CRC）
                 byte[] crcData = new byte[dataLength - 2];
                 Array.Copy(cmd, 0, crcData, 0, crcData.Length);

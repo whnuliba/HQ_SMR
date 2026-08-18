@@ -20,5 +20,8 @@ namespace IDS.HQ.Service.Adapter
         public IdsResult<RackTask> Putway(RackTask rackTask) {
             return _service.Putway(rackTask);
         }
+        public IdsResult<RackTask> Outbound(RackTask rackTask) {
+            return _service.Outbound(rackTask);
+        }
     }
 }

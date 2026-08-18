@@ -37,7 +37,7 @@ namespace IDS.HQ.Controller
             if (!RequestData<RegisterRackInfoDto>.isRequest(rackInfo))
                 return ResponseEntity<object>.Error("请传入合法参数");
             var res = _adapter.RegisterRackInfo(rackInfo.data);
-            if (!res.Success) ResponseEntity<object>.Error(res.Message);
+            if (!res.Success) return ResponseEntity<object>.Error(res.Message);
             return ResponseEntity<object>.Success("ok");
         }
     }

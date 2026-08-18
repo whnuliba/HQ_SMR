@@ -13,6 +13,7 @@ namespace IDS.HQ.Module.DTO
         public string BSide { set; get; }
         public int BSideCount { set; get; }
         public int BSideStartIndex { set; get; }
-
+        public string IP { get; set; }
+        public int Port { get; set; }
     }
 }

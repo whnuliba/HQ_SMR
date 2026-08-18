@@ -32,6 +32,14 @@ namespace IDS.HQ.Module
 
             });
 
+            modelBuilder.Entity<Rack>(entity =>
+            {
+                entity.HasKey(e => e.Id).HasName("PRIMARY");
+
+                entity.ToTable("Rack");
+
+            });
+
         }
     }
 }

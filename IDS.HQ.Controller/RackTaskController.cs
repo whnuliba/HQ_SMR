@@ -7,6 +7,7 @@ using IDS.Ioc;
 using IDS.Persistence;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
+using static LinqToDB.Common.Configuration;
 
 namespace IDS.HQ.Controller
 {
@@ -29,6 +30,16 @@ namespace IDS.HQ.Controller
             if (!RequestData<RackTask>.isRequest(data))
                 return ResponseEntity<RackTask>.Error("上传信息为空");
             IdsResult<RackTask> res = _adapter.Putway(data.data);
+            if (res.Success)
+                return ResponseEntity<RackTask>.Success(res.Data);
+            else return ResponseEntity<RackTask>.Error(res.Message);
+        }
+        [HttpPost]
+        [Route("Outbound")]
+        public ResponseEntity<RackTask> Outbound(RequestData<RackTask> data) {
+            if (!RequestData<RackTask>.isRequest(data))
+                return ResponseEntity<RackTask>.Error("上传信息为空");
+            IdsResult<RackTask> res = _adapter.Outbound(data.data);
             if (res.Success)
                 return ResponseEntity<RackTask>.Success(res.Data);
             else return ResponseEntity<RackTask>.Error(res.Message);

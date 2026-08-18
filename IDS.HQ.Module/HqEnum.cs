@@ -6,6 +6,10 @@ using System.Threading.Tasks;
 
 namespace IDS.HQ.Module
 {
+    public enum TaskTypes { 
+      IN=0, //入库
+      OUT=1,//出库
+    }
     public enum TaskStates
     {
         UP_WAIT = 0, //等待上架

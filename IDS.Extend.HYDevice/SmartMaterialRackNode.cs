@@ -1,4 +1,9 @@
 ﻿using IDS.Device.Communication;
+using IDS.HQ.Module;
+using IDS.Ioc;
+using LinqToDB.Data;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -33,6 +38,24 @@ namespace IDS.Extend.HYDevice
                 return node;
             }
             return node;
+        }
+        public void Initialize() {
+            //用于同步数据库
+            IDbContextFactory<RackDbContext> dbContext = ContainerUtils.AutofacServiceProvider.GetRequiredService<IDbContextFactory<RackDbContext>>();
+            using (var ctx = dbContext.CreateDbContext()) {
+              ctx.Set<Rack>().ToList().ForEach(item =>{
+                  var node = new RackNode
+                  {
+                      No = item.RackNo,
+                      IP = item.IP,
+                      Port = (ushort)item.Port,
+                      Enabled = "Y",
+                  };
+                  AddNode(node);
+              });
+
+
+            }
         }
     }
     public class RackNode {
