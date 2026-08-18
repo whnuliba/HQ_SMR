@@ -19,6 +19,7 @@ namespace IDS.Ioc
             var builder = new ContainerBuilder();
             var serviceProviderRegistration = builder.RegisterType<AutofacServiceProvider>().As<IServiceProvider>().ExternallyOwned();
             builder.RegisterType<IDSServiceScopeFactory>().As<IServiceScopeFactory>();
+           // builder.Populate(services);
             foreach (ServiceDescriptor descriptor in services)
             {
                 if (descriptor.ImplementationType != null)

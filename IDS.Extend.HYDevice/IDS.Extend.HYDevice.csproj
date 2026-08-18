@@ -9,6 +9,8 @@
   <ItemGroup>
     <ProjectReference Include="..\IDS.Device.Communication\IDS.Device.Communication.csproj" />
     <ProjectReference Include="..\IDS.HQ.HYDevice.Protocol\IDS.HQ.HYDevice.Protocol.csproj" />
+    <ProjectReference Include="..\IDS.HQ.Module\IDS.HQ.Module.csproj" />
+    <ProjectReference Include="..\IDS.Ioc\IDS.Ioc.csproj" />
   </ItemGroup>
 
 </Project>

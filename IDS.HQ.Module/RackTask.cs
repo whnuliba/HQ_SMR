@@ -6,7 +6,7 @@ namespace IDS.HQ.Module
     {
 
         public string? RackNo { get; set; }
-        public int? TaskState { get; set; }
+        public int TaskState { get; set; }
         public string? PPID { get; set; }
         public int? Location { get; set; }
         public int? TaskType { get; set; }

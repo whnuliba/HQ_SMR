@@ -3,8 +3,13 @@ using IDS.Device.Communication;
 using IDS.Extend.HYDevice.DTO;
 using IDS.Extend.HYDevice.Handler;
 using IDS.HQ.HYDevice.Protocol;
+using IDS.HQ.Module;
+using IDS.Ioc;
+using IDS.Persistence;
 using log4net;
 using log4net.Repository.Hierarchy;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
@@ -24,7 +29,6 @@ namespace IDS.Extend.HYDevice.ReceiveHandler
         public ILog Logger = LogManager.GetLogger(typeof(LogManager));
 
         public override string ReceiveKey { get; set; } = "0x0F";
-
         public override IdsResult<object> Handle<E>(byte[] data, IdsSession session,DeviceCommand<E> command)
         {
             //获取ID
@@ -54,7 +58,13 @@ namespace IDS.Extend.HYDevice.ReceiveHandler
             {
                 return false;
             }
-            List<InductiveShelfTask> inductiveShelves = new List<InductiveShelfTask>(); //后面根据数据库状态来判断
+
+        IdsRedis RedisClient = (RedisClient)ContainerUtils.AutofacServiceProvider.GetService(typeof(RedisClient));
+        //public IDbContextFactory<RackDbContext> DbContextFactory { get; set; }
+        IDbContextFactory<RackDbContext> dbContext = ContainerUtils.AutofacServiceProvider.GetRequiredService<IDbContextFactory<RackDbContext>>();
+
+
+        List<InductiveShelfTask> inductiveShelves = new List<InductiveShelfTask>(); //后面根据数据库状态来判断
             List<InductiveShelfTask> down = inductiveShelves.Where(c=>c.Operation== (int)OperationState.DOWN && c.RackNo==rackNode.No).ToList();
             List<InductiveShelfTask> up = inductiveShelves.Where(c => c.Operation == (int)OperationState.UP && c.RackNo == rackNode.No).ToList();
             foreach (var item in locations.Locations)

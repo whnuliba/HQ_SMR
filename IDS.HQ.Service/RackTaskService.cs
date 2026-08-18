@@ -1,4 +1,5 @@
-﻿using IDS.Base;
+﻿using Autofac;
+using IDS.Base;
 using IDS.Common;
 using IDS.Common.Utils;
 using IDS.HQ.Module;
@@ -7,18 +8,21 @@ using IDS.Persistence;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Internal;
+using Microsoft.Extensions.DependencyInjection;
 using System.Transactions;
 
 namespace IDS.HQ.Service
 {
     [AutoInjection]
-    public class RackTaskService : IRackTaskService<RackTask>
+    public class RackTaskService : DbLongBaseService<RackTask>, IRackTaskService
     {
         public object obj_lock = new object();
         public IdsRedis RedisClient { get; set; }
         private string _checkPutwayKey = "HQ:HY:PUTWAY:CHECK"; //料架号
         public  IDbContextFactory<RackDbContext> DbContextFactory { get; set; }
-        public RackDbContext DbContext()
+        public override RackDbContext DbContext()
         {
             return DbContextFactory.CreateDbContext();
         }
