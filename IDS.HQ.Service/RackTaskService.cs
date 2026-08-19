@@ -12,6 +12,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.Extensions.DependencyInjection;
+using Newtonsoft.Json.Linq;
 using StackExchange.Redis;
 using System.Transactions;
 
@@ -38,14 +39,27 @@ namespace IDS.HQ.Service
             if (rackTask == null || string.IsNullOrWhiteSpace(rackTask.RackNo)) {
                 return IdsResult<RackTask>.failure("上传的货架信息为空，或者货架号为空");
             }
+            if (string.IsNullOrEmpty(rackTask.RackSide))
+            {
+                return IdsResult<RackTask>.failure($"上传的货架{rackTask.RackNo}信息面号为空");
+            }
+            if (!string.IsNullOrEmpty(rackTask.RackSide) && rackTask.RackSide.IndexOf("A,B") < 0) {
+
+                return IdsResult<RackTask>.failure($"货架{rackTask.RackNo}:面号{rackTask.RackSide} 不是A或B");
+            }
             lock (obj_lock) {
-                string token = RedisClient.GetDatabase().StringGet(_checkPutwayKey + rackTask.RackNo);
+                string token = RedisClient.GetDatabase().StringGet(_checkPutwayKey + rackTask.RackNo+":"+rackTask.RackSide);
                 if (!string.IsNullOrWhiteSpace(token)) {
-                    return IdsResult<RackTask>.failure($"当前该货架{rackTask.RackNo}有正在上架但未绑定的任务,任务token:{token}");
+                    return IdsResult<RackTask>.failure($"01:当前该货架{rackTask.RackNo}有正在上架但未绑定的任务,任务token:{token}");
                 }
                 using (var ctx = DbContext()) {
                     long id = IdUtils.Id;
                     rackTask.Id = id;
+                    //检查是否还有未完成的任务
+                    var task = ctx.RackTask.Where(f => f.RackNo == rackTask.RackNo && f.RackSide == rackTask.RackSide && f.TaskState == (int)TaskStates.UP_WAIT).FirstOrDefault();
+                    if (task != null) {
+                        return IdsResult<RackTask>.failure($"02:当前该货架{rackTask.RackNo}有正在上架但未绑定的任务,任务token:{task.Id},但缓存已经完成，可能是人为调整数据库导致，请确认，并在系统上完成异常处理");
+                    }
                     using (var ts = new TransactionScope())
                     {
                         try
@@ -53,7 +67,7 @@ namespace IDS.HQ.Service
                             rackTask.TaskState = (int)TaskStates.UP_WAIT;
                             rackTask.saveInit();
                             ctx.Insert(rackTask);
-                            RedisClient.GetDatabase().StringSet(_checkPutwayKey + rackTask.RackNo, id + "");
+                            RedisClient.GetDatabase().StringSet(_checkPutwayKey + rackTask.RackNo+":" + rackTask.RackSide, id + "");
                             ts.Complete();
                         }
                         catch (Exception ex) { 
@@ -104,7 +118,7 @@ namespace IDS.HQ.Service
                 for (int i = 0; i < stockAddress.Length; i++)
                 {
                     var item = stockAddress[i];
-                    if (!int.TryParse(item, out int _addr) || !addrCaches.Contains(_addr))
+                    if (!int.TryParse(item, out int _addr) || addrCaches.Contains(_addr))
                     {
                         return IdsResult<RackTask>.failure($"该储位有正在执行的任务，也有可能下发的储位号不是整数类型,货架:{rackTask.RackNo}:{item}");
                     }

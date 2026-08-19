@@ -2,10 +2,12 @@
 using IDS.Device.Communication;
 using IDS.Extend.HYDevice.DTO;
 using IDS.Extend.HYDevice.Handler;
+using IDS.Extension;
 using IDS.HQ.HYDevice.Protocol;
 using IDS.HQ.Module;
 using IDS.Ioc;
 using IDS.Persistence;
+using LinqToDB;
 using LinqToDB.Common;
 using log4net;
 using log4net.Core;
@@ -56,7 +58,9 @@ namespace IDS.Extend.HYDevice.ReceiveHandler
             //报文解析
             string id = Encoding.ASCII.GetString(ids);
             var inductiveShelf = InductiveShelfInfoDto.Parse(data, rack.No, id);
-            CheckOperation(inductiveShelf, rack, session);
+            var rackNode = new RackNode();
+            ObjectExtensions.CopyProperties(rack, rackNode);
+            CheckOperation(inductiveShelf, rackNode, session);
             return IdsResult<object>.ok();
         }
         //处理上架部分，上架的的PPI只能更具redis来做串行化执行
@@ -64,7 +68,7 @@ namespace IDS.Extend.HYDevice.ReceiveHandler
         {
 
             IdsRedis RedisClient = ContainerUtils.AutofacServiceProvider.GetRequiredService<IdsRedis>();
-            var taskId = RedisClient.GetDatabase().StringGet(_checkPutwayKey+ rackNode.No);
+            var taskId = RedisClient.GetDatabase().StringGet(_checkPutwayKey+ rackNode.No+":"+rackNode.RackSide);
             if (string.IsNullOrEmpty(taskId))
             {
                 return IdsResult<object>.failure($"设备{rackNode.No}没有等待上架的任务,非法按下");
@@ -126,15 +130,28 @@ namespace IDS.Extend.HYDevice.ReceiveHandler
                     rackinfoload.PPID = uptasktask.PPID;
                     rackinfoload.Loading = (int)LocationStates.LOADING;
                     ctx.RackInfo.Attach(rackinfoload);
-                    ctx.Entry(rackinfoload).State = EntityState.Modified;
-                    ctx.SaveChanges();
-
+                    //ctx.Entry(rackinfoload).State = EntityState.Modified;
+                    ctx.Entry(rackinfoload).Property(p => p.LastModifyTime).IsModified = true;
+                    ctx.Entry(rackinfoload).Property(p => p.Loading).IsModified = true;
+                    int i = ctx.SaveChanges();
+                    if (i == 0)
+                    {
+                        return IdsResult<object>.failure($"货架{rackNode.No}:储位{locationInfo.Addr} 状态变更失败，请检查");
+                    }
                     uptasktask.TaskState = (int)TaskStates.UP_COMPLETE;
+                    uptasktask.Location = locationInfo.Addr;
+                    uptasktask.LastModifyTime = DateTime.Now;
                     ctx.RackTask.Attach(uptasktask);
+                    ctx.Entry(uptasktask).Property(p => p.LastModifyTime).IsModified = true;
+                    ctx.Entry(uptasktask).Property(p => p.TaskState).IsModified = true;
                     ctx.Entry(uptasktask).State = EntityState.Modified;
-                    ctx.SaveChanges();
+                    i = ctx.SaveChanges();
+                    if (i == 0)
+                    {
+                        return IdsResult<object>.failure($"货架{rackNode.No}:储位{locationInfo.Addr} 任务状态变更失败，请检查");
+                    }
                     //清除Redis上的任务
-                    RedisClient.GetDatabase().KeyDelete(_checkPutwayKey);
+                    RedisClient.GetDatabase().KeyDelete(_checkPutwayKey + rackNode.No + ":" + rackNode.RackSide);
                     ts.Complete();
                 }
             }
@@ -149,7 +166,7 @@ namespace IDS.Extend.HYDevice.ReceiveHandler
             //获取所有任务号
             //获取所有的value
             var entry = RedisClient.GetDatabase().HashGetAll(_checkOutboundKey + rackNode.No);
-            if (entry != null && entry.Length > 0)
+            if (entry == null || entry.Length == 0)
             {
                 return IdsResult<object>.failure($"货架{rackNode.No}:储位{locationInfo.Addr}非法拿起，当前该储位不在出库队列，请检查");
             }
@@ -195,34 +212,52 @@ namespace IDS.Extend.HYDevice.ReceiveHandler
                 {
                     return IdsResult<object>.failure($"设备{rackNode.No}没有等待出库的任务{taskId}，Redis和数据库数据不一致，基于设备特性，每台料架智能有有个上架任务");
                 }
-                using (var tx = new TransactionScope()) {
-                    var rackIinfo = ctx.Query<RackInfo>(f=>f.RackNo==rackNode.No && f.Location== locationInfo.Addr).FirstOrDefault();
-                    if (rackIinfo != null) {
-                        rackIinfo.PPID = "";
-                        rackIinfo.Loading = (int)LocationStates.FREE;
-                        ctx.RackInfo.Attach(rackIinfo);
-                        // 只标记特定属性为已修改
-                        ctx.Entry(rackIinfo).Property(p => p.Loading).IsModified = true;
-                        ctx.Entry(rackIinfo).Property(p => p.PPID).IsModified = true;
-                        ctx.SaveChanges();
+                using (var ts = new TransactionScope()) {
 
-                        addrCaches.Remove(locationInfo.Addr);
-  
-                        //判断是都需要结束任务
-                        if (taskDic.ContainsKey(uptasktask.Id) && taskDic[uptasktask.Id].Count==1 && taskDic[uptasktask.Id].First() == locationInfo.Addr) {
-                            uptasktask.LastModifyTime = DateTime.Now;
-                            uptasktask.TaskState = (int)TaskStates.DOWN_COMPLETE;
-                            ctx.RackTask.Attach(uptasktask);
-                            // 只标记特定属性为已修改
-                            ctx.Entry(uptasktask).Property(p => p.LastModifyTime).IsModified = true;
-                            ctx.Entry(uptasktask).Property(p => p.TaskState).IsModified = true;
-                            ctx.SaveChanges();
-    
-                        }
-                        //清除redis缓存
-                        RedisClient.GetDatabase().HashDelete(_checkOutboundKey + rackNode.No, locationInfo.Addr);
-                        //清除刷新的内存
+                    var now = DateTime.Now;
+                    int i =  ctx.RackInfo
+                        .Where(r => r.RackNo == rackNode.No && r.Location == locationInfo.Addr && r.Loading != (int)LocationStates.FREE)
+                        .ExecuteUpdate(setters => setters
+                            .SetProperty(r => r.LastModifyTime, now)
+                            .SetProperty(r => r.Loading, (int)LocationStates.FREE)
+                            .SetProperty(r => r.PPID, "")
+                        );
+
+                    if (i == 0) { 
+                       return IdsResult<object>.failure($"设备{rackNode.No}出库的任务{taskId}，货架释放储位失败，基于设备特性，每台料架智能有有个上架任务");
                     }
+
+                    var rackIinfo = ctx.Query<RackInfo>(f=>f.RackNo==rackNode.No && f.Location== locationInfo.Addr).FirstOrDefault();
+                    addrCaches.Remove(locationInfo.Addr);
+
+                    //判断是都需要结束任务
+                    if (taskDic.ContainsKey(uptasktask.Id) && taskDic[uptasktask.Id].Count == 1 && taskDic[uptasktask.Id].First() == locationInfo.Addr)
+                    {
+                        //uptasktask.LastModifyTime = DateTime.Now;
+                        //uptasktask.TaskState = (int)TaskStates.DOWN_COMPLETE;
+                        //ctx.RackTask.Attach(uptasktask);
+                        //// 只标记特定属性为已修改
+                        //ctx.Entry(uptasktask).Property(p => p.LastModifyTime).IsModified = true;
+                        //ctx.Entry(uptasktask).Property(p => p.TaskState).IsModified = true;
+                        //ctx.SaveChanges();
+
+                        i = ctx.RackTask
+                        .Where(r => r.Id == uptasktask.Id && r.TaskState== (int)TaskStates.DOWN_COMPLETE)
+                        .ExecuteUpdate(setters => setters
+                            .SetProperty(r => r.LastModifyTime, now)
+                            .SetProperty(r => r.TaskState, (int)TaskStates.DOWN_COMPLETE)
+                        );
+
+                        if (i == 0)
+                        {
+                            return IdsResult<object>.failure($"设备{rackNode.No}出库的任务{taskId}，最后一个下架任务出货完成失败，基于设备特性，每台料架智能有有个上架任务");
+                        }
+
+                    }
+                    //清除redis缓存
+                    RedisClient.GetDatabase().HashDelete(_checkOutboundKey + rackNode.No, locationInfo.Addr);
+                    //清除刷新的内存
+                    ts.Complete();
                 }
             }
             return IdsResult<object>.ok();
@@ -243,6 +278,7 @@ namespace IDS.Extend.HYDevice.ReceiveHandler
                 byte side = upCountList.First().Addr + 1 > rackNode.AQty ? (byte)1 : (byte)0; //0=>A 1=>B
                 string sideStr = side == 0 ? "A" : "B";
                 //非法按下，同时间智能处理一个上架任务
+                rackNode.RackSide = sideStr;
                 var alarm = new RackAlarmInfo
                 {
                     Side = side,
@@ -260,6 +296,7 @@ namespace IDS.Extend.HYDevice.ReceiveHandler
                 var item = upCountList.First();
                 byte side = item.Addr + 1 > rackNode.AQty ? (byte)1 : (byte)0; //0=>A 1=>B
                 string sideStr = side == 0 ? "A" : "B";
+                rackNode.RackSide = sideStr;
                 //处理上架
                 if (item.Status == 1)
                 {
@@ -288,6 +325,7 @@ namespace IDS.Extend.HYDevice.ReceiveHandler
             {
                 byte side = item.Addr + 1 > rackNode.AQty ? (byte)1 : (byte)0; //0=>A 1=>B
                 string sideStr = side == 0 ? "A" : "B";
+                rackNode.RackSide = sideStr;
                 //处理下架
                 var res = CheckAndExecDownTask(rackNode, item);
                 if (!res.Success) {

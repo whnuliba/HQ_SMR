@@ -71,11 +71,7 @@ namespace IDS.Extend.HYDevice
         public string InductiveShelf { set; get; } = "Y";
         public int AQty { set; get; } = 656;
         public int BQty { set; get; } = 656;
-        //上下感应货架指令来自前端操作，常驻内存，会同步到Redis。
-        public Queue<LocationInfo> WaitDownInductiveQueue {private set; get; } = new();
-        public Queue<LocationInfo> WaitUpInductiveQueue { private set; get; } = new ();
-        //同步实时的货位状态信息
-        public List<LocationStatusInfo> locationStatusInfos { set; get; } = new ();
+        public string RackSide { set; get; }
 
     }
 

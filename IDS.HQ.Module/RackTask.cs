@@ -14,6 +14,7 @@ namespace IDS.HQ.Module
         public string? MaterialNo { get; set; }
         public string? MaterialName { get; set; }
         public string? Locations { get; set; }
+        public string? RackSide { get; set; }
     }
 
 
