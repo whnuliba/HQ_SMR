@@ -40,6 +40,29 @@ namespace IDS.HQ.Module
 
             });
 
+            modelBuilder.Entity<RackCancelTask>(entity =>
+            {
+                entity.HasKey(e => e.Id).HasName("PRIMARY");
+
+                entity.ToTable("RackCancelTask");
+
+            });
+
+            modelBuilder.Entity<RackTaskHis>(entity =>
+            {
+                entity.HasKey(e => e.Id).HasName("PRIMARY");
+
+                entity.ToTable("RackTaskHis");
+
+            });
+            modelBuilder.Entity<UserInfo>(entity =>
+            {
+                entity.HasKey(e => e.Id).HasName("PRIMARY");
+
+                entity.ToTable("UserInfo");
+
+            });
+
         }
     }
 }

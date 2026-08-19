@@ -1,4 +1,5 @@
 ﻿using IDS.Device.Communication;
+using IDS.HQ.HYDevice.Protocol;
 using IDS.HQ.Module;
 using IDS.Ioc;
 using LinqToDB.Data;
@@ -16,29 +17,71 @@ namespace IDS.Extend.HYDevice
     public class SmartMaterialRackNode
     {
         private static readonly Lazy<SmartMaterialRackNode> _instance = new Lazy<SmartMaterialRackNode>(() => new SmartMaterialRackNode());
-        private readonly static ConcurrentDictionary<string, RackNode> _rackNode = new ConcurrentDictionary<string, RackNode>();
+        private readonly static ConcurrentDictionary<string, RackNode> _rackNodeWithIp = new ConcurrentDictionary<string, RackNode>();
+        private readonly static ConcurrentDictionary<string, RackNode> _rackNodeWithNo = new ConcurrentDictionary<string, RackNode>();
 
         public static SmartMaterialRackNode Instance => _instance.Value;
         private SmartMaterialRackNode() { }
         public RackNode AddNode(RackNode rackNode) {
-            _rackNode.AddOrUpdate(rackNode.IP, rackNode, (k, ov) => rackNode);
+            _rackNodeWithIp.AddOrUpdate(rackNode.IP, rackNode, (k, ov) => rackNode);
+            _rackNodeWithNo.AddOrUpdate(rackNode.No, rackNode, (k, ov) => rackNode);
             return rackNode;
         }
         public void RemoveNode(RackNode rackNode)
         {
-            _rackNode.TryRemove(rackNode.IP,out _);
+            _rackNodeWithIp.TryRemove(rackNode.IP,out _);
+            _rackNodeWithNo.TryRemove(rackNode.No, out _);
         }
         public void RemoveNode(string rackNode)
         {
-            _rackNode.TryRemove(rackNode, out _);
+            RemoveNode(GetRackNode(rackNode));
         }
         public RackNode GetRackNode(string key) {
             RackNode node = null;
-            if (_rackNode.TryGetValue(key, out node)) {
+            if (_rackNodeWithIp.TryGetValue(key, out node)) {
                 return node;
             }
+            if(node==null && _rackNodeWithNo.TryGetValue(key, out node))
+                return node;
             return node;
         }
+        public void NoticeRackMultiLightOn(string rackNo, Dictionary<int, byte> OnLight) {
+
+            if (OnLight != null && OnLight.Count > 0)
+            {
+                var rack = GetRackNode(rackNo);
+                var result = OnLight.GroupBy(kvp => kvp.Value)
+                    .ToDictionary(g => g.Key, g => g.Where(f=>f.Key!=null).Select(kvp => kvp.Key).ToList());
+                
+                foreach (var kvp in result) {
+                    var conn = ServerConnectionHolder.GetDefaultConnection();
+                    var idsEndpoint = new IdsEndPoint(rack.IP, rack.Port);
+                    //获取报文
+                    var message = DeviceMessage.GetMultiLightOnMessage(kvp.Value, kvp.Key);
+                    conn.Send(message, idsEndpoint);
+                }
+            }
+        }
+        public void NoticeRack(string rackNo, byte[] data) {
+
+            var rack = GetRackNode(rackNo);
+            var conn = ServerConnectionHolder.GetDefaultConnection();
+            var idsEndpoint = new IdsEndPoint(rack.IP, rack.Port);
+            conn.Send(data, idsEndpoint);
+        }
+        public void NoticeRackMultiLightOff(string rackNo, List<int> addr)
+        {
+
+            if (addr != null && addr.Count > 0)
+            {
+                var rack = GetRackNode(rackNo);
+                var conn = ServerConnectionHolder.GetDefaultConnection();
+                var message = DeviceMessage.GetMultiLightOffMessage(addr);
+                var idsEndpoint = new IdsEndPoint(rack.IP, rack.Port);
+                conn.Send(message, idsEndpoint);
+            }
+        }
+
         public void Initialize() {
             //用于同步数据库
             IDbContextFactory<RackDbContext> dbContext = ContainerUtils.AutofacServiceProvider.GetRequiredService<IDbContextFactory<RackDbContext>>();
@@ -64,7 +107,6 @@ namespace IDS.Extend.HYDevice
         public string IP { set; get; }
         public ushort Port { set; get; }
         public string LocalIP { set; get; }
-
         public ushort LocalPort { set; get; }
         public string Enabled { set; get; } = "Y";
         public string Alarm { set; get; } = "Y";

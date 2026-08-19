@@ -19,6 +19,11 @@ namespace IDS.HQ.HYDevice.Protocol
         {
             return GetMessage(15, 0, null);
         }
+
+        public static byte[] GetTestModeMessage(byte mode)
+        {
+            return GetMessage(16, 25, new byte[] { mode });
+        }
         /// <summary>
         /// 
         /// </summary>
@@ -218,7 +223,7 @@ namespace IDS.HQ.HYDevice.Protocol
         public static byte[] GetMultiLightOffMessage(List<int> ledAddrs)
         {
             int num = 5 + ledAddrs.Count * 2 + 1 + 10;
-            byte[] message = new byte[2 + ledAddrs.Count * 2];
+            byte[] message = new byte[2 + ledAddrs.Count * 2+1];
             string text = (num + 2).ToString("x").PadLeft(4, '0');
             message[0] = Convert.ToByte(text.Substring(0, 2), 16);
             message[1] = Convert.ToByte(text.Substring(2), 16);
@@ -306,6 +311,84 @@ namespace IDS.HQ.HYDevice.Protocol
         // TODO 查询初始化信息返回
         public static byte[] GetQueryInitInfo() {
             return GetMessage(15, 5, null);
+        }
+
+
+        //  ===================================================================================
+
+        public static byte[] GetAlarmLight(byte side, bool light) {
+            int num = 19;
+            byte[] array = new byte[6];
+            array[0] = side;
+            array[1] = 1;
+            bool flag2 = !light;
+            if (flag2)
+            {
+                array[2] = 0;
+            }
+            else
+            {
+                array[2] = 1;
+            }
+            array[3] = side;
+            array[4] = 2;
+            bool flag3 = !light;
+            if (flag3)
+            {
+                array[5] = 0;
+            }
+            else
+            {
+                array[5] = 1;
+            }
+            return GetMessage((byte)(num+2), 12, array);
+        }
+
+        /// <summary>
+        /// 大灯灭，蜂鸣 器灭 走该接口
+        /// </summary>
+        /// <param name="alarmAddr"></param>
+        /// <param name="color"></param>
+        /// <param name="light"></param>
+        /// <returns></returns>
+        public static byte[] GetAlarmLight(byte alarmAddr, byte color, bool light)
+        {
+            byte[] array = new byte[3];
+            array[0] = alarmAddr;
+            array[1] = color;
+            if (light)
+            {
+                array[2] = 1;
+            }
+            else
+            {
+                array[2] = 0;
+            }
+            return GetMessage(18, 12, array);
+        }
+
+       
+        /// <summary>
+        /// 塔灯闪烁（对应文档API中的 AlarmLightFlashing）
+        /// </summary>
+        /// <param name="shelfSide">货架面 0-A；1-B；2-AB</param>
+        /// <param name="mode">0-闪烁；1-取消闪烁</param>
+        /// <returns></returns>
+        public static byte[] GetAlarmLightFlashingMessage(byte shelfSide, int mode)
+        {
+            byte[] data = new byte[2];
+            data[0] = shelfSide;
+            data[1] = (byte)mode;
+            return GetMessage(17, 30, data);
+        }
+
+        /// <summary>
+        /// 获取储位状态（对应文档API中的 GetAddrStatus）
+        /// </summary>
+        /// <returns></returns>
+        public static byte[] GetAddrStatusMessage()
+        {
+            return GetMessage(15, 16, null);
         }
 
     }

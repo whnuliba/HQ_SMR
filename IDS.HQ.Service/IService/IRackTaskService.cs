@@ -9,6 +9,6 @@ namespace IDS.HQ.Service
     { 
         IdsResult<RackTask> Putway(RackTask data);
         IdsResult<RackTask> Outbound(RackTask rackTask);
-
+        IdsResult<RackTask> CancelTask(RackTask rackTask);
     }
 }

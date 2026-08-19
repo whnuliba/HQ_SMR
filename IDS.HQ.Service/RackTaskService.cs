@@ -3,9 +3,12 @@ using IDS.Base;
 using IDS.Common;
 using IDS.Common.Utils;
 using IDS.Extend.HYDevice;
+using IDS.Extension;
 using IDS.HQ.Module;
 using IDS.Ioc;
 using IDS.Persistence;
+using LinqToDB.Data;
+using LinqToDB.EntityFrameworkCore;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
@@ -15,6 +18,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json.Linq;
 using StackExchange.Redis;
 using System.Transactions;
+using ZstdSharp.Unsafe;
 
 namespace IDS.HQ.Service
 {
@@ -43,7 +47,7 @@ namespace IDS.HQ.Service
             {
                 return IdsResult<RackTask>.failure($"上传的货架{rackTask.RackNo}信息面号为空");
             }
-            if (!string.IsNullOrEmpty(rackTask.RackSide) && rackTask.RackSide.IndexOf("A,B") < 0) {
+            if (!string.IsNullOrEmpty(rackTask.RackSide) && "A,B".IndexOf(rackTask.RackSide) < 0) {
 
                 return IdsResult<RackTask>.failure($"货架{rackTask.RackNo}:面号{rackTask.RackSide} 不是A或B");
             }
@@ -67,14 +71,25 @@ namespace IDS.HQ.Service
                             rackTask.TaskState = (int)TaskStates.UP_WAIT;
                             rackTask.saveInit();
                             ctx.Insert(rackTask);
-                            RedisClient.GetDatabase().StringSet(_checkPutwayKey + rackTask.RackNo+":" + rackTask.RackSide, id + "");
+                            //处理亮灯问题。
+                            //检查当前位置信息是空的货架
+                            var allowLight = from light in ctx.RackInfo
+                                             where light.RackNo == rackTask.RackNo
+                                             && light.RackSide == rackTask.RackSide
+                                             && light.Loading == (int)LocationStates.FREE
+                                             select light.Location;
+                            //先亮绿灯吧？后续按照需求规格来设置颜色
+                            Dictionary<int, byte> dic = allowLight.ToDictionary(k => k??0, v => (byte)Light.G);
+                            SmartMaterialRackNode.Instance.NoticeRackMultiLightOn(rackTask.RackNo, dic);
+                            RedisClient.GetDatabase().StringSet(_checkPutwayKey + rackTask.RackNo + ":" + rackTask.RackSide, id + "");
                             ts.Complete();
                         }
                         catch (Exception ex) { 
                           return IdsResult<RackTask>.failure(ex.Message);
                         }
-                  
                     }
+
+
                 }
 
                 //处理任务创建
@@ -113,6 +128,7 @@ namespace IDS.HQ.Service
                 {
                     return IdsResult<RackTask>.failure($"没有下发需要下架的储位号,货架:{rackTask.RackNo}");
                 }
+                List<int> light = new List<int>();
                 //判断储位号是否在当前的缓存中 同时判断储位号是否已经下发过出库做了
                 HashEntry[] hashFields = new HashEntry[stockAddress.Length];
                 for (int i = 0; i < stockAddress.Length; i++)
@@ -122,6 +138,7 @@ namespace IDS.HQ.Service
                     {
                         return IdsResult<RackTask>.failure($"该储位有正在执行的任务，也有可能下发的储位号不是整数类型,货架:{rackTask.RackNo}:{item}");
                     }
+                    light.Add(_addr);
                     hashFields[i] = new HashEntry(item, rackTask.Id);
                 }
 
@@ -139,6 +156,9 @@ namespace IDS.HQ.Service
                             //存入到redis
 
                             RedisClient.GetDatabase().HashSet(_checkOutboundKey + rackTask.RackNo, hashFields);
+                            Dictionary<int, byte>? dic = light?.ToDictionary(k => k, v => (byte)Light.R);
+                            //发送亮灯信息
+                            SmartMaterialRackNode.Instance.NoticeRackMultiLightOn(rackTask.RackNo, dic);
                             ts.Complete();
                         }
                         catch (Exception ex)
@@ -156,7 +176,6 @@ namespace IDS.HQ.Service
         public IdsResult<RackTask> Outbound1(RackTask rackTask)
         {
             //处理出库需要检查
-
             //做两个操作，1是确认当前是否已经完成绑定
             if (rackTask == null || string.IsNullOrWhiteSpace(rackTask.RackNo))
             {
@@ -167,7 +186,6 @@ namespace IDS.HQ.Service
             }
             lock (obj_lock_out)
             {
-
                 //产生任务号
                 List<long> taskIds = new List<long>();
                 List<int> addrCaches = new List<int>();
@@ -211,8 +229,6 @@ namespace IDS.HQ.Service
                     }
                     redisValues[i] = item;
                 }
-            
-
                 using (var ctx = DbContext())
                 {
 
@@ -238,6 +254,143 @@ namespace IDS.HQ.Service
                 //处理任务创建
                 return IdsResult<RackTask>.ok(rackTask);
             }
+        }
+        public IdsResult<RackTask> CancelTask(RackTask rackTask)
+        {
+            if (rackTask == null || string.IsNullOrWhiteSpace(rackTask.RackNo))
+            {
+                return IdsResult<RackTask>.failure("下架信息为空，或者货架号为空");
+            }
+            if (rackTask.TaskType != (int)TaskTypes.IN && rackTask.TaskType != (int)TaskTypes.OUT) {
+                return IdsResult<RackTask>.failure($"货架{rackTask.RackNo}没有指定需要取消的上下架类型");
+            }
+            if (rackTask.TaskType == (int)TaskTypes.IN) {
+                return CancelPutwayTask(rackTask);
+            }
+            if (rackTask.TaskType == (int)TaskTypes.OUT)
+            {
+                return CancelOutboundTask(rackTask);
+            }
+            return IdsResult<RackTask>.ok();
+        }
+
+        private IdsResult<RackTask> CancelOutboundTask(RackTask rackTask) {
+            if (string.IsNullOrEmpty(rackTask.Locations))
+            {
+                //判断是否有任务ID
+
+                using (var ctx = DbContext())
+                {
+                    var task = ctx.RackTask.Where(f => f.Id == rackTask.Id).FirstOrDefault();
+                    if(task!=null)
+                        rackTask.Locations = task.Locations; ;
+                 }
+                if(string.IsNullOrEmpty(rackTask.Locations))
+                    return IdsResult<RackTask>.failure($"没有下发需要取消的储位号,货架:{rackTask.RackNo}");
+            }
+            //解析储位号
+            string[] stockAddress = rackTask.Locations.Split(",");
+            if (stockAddress.Length == 0)
+            {
+             return IdsResult<RackTask>.failure($"没有下发需要下架的储位号,货架:{rackTask.RackNo}");
+            }
+
+            //TODO判断若没有指定取消储位的方法,及时缓存的所有任务进行取消
+            //该功能待业务确定，到任务级别还是位置级别
+            //判断储位号是否在当前的缓存中 同时判断储位号是否已经下发过出库做了
+            List<int> ligthAddrs = new List<int>();
+            RedisValue[] hashFields = new RedisValue[stockAddress.Length];
+            for (int i = 0; i < stockAddress.Length; i++)
+            {
+                var item = stockAddress[i];
+                if (!int.TryParse(item, out int _addr))
+                {
+                    return IdsResult<RackTask>.failure($"下发的储位号不是整数类型,货架:{rackTask.RackNo}:{item}");
+                }
+                ligthAddrs.Add(_addr);
+                hashFields[i] = new RedisValue(item);
+            }
+            using (var ctx = DbContext()) {
+                using (var ts = new TransactionScope()) {
+                    var task = (from rt in ctx.RackTask
+                                where rt.RackNo == rackTask.RackNo
+                                && rt.RackSide == rackTask.RackSide
+                                && rt.TaskState == (int)TaskStates.DOWN_WAIT
+                                select rt).FirstOrDefault();
+                    if (task != null)
+                    {
+                        var cancelTask = new RackCancelTask();
+                        ObjectExtensions.CopyProperties(task, cancelTask);
+                        cancelTask.updateInit();
+                        ctx.Insert(cancelTask);
+                        ctx.Remove(task);
+                        ctx.SaveChanges();
+                        SmartMaterialRackNode.Instance.NoticeRackMultiLightOff(rackTask.RackNo, ligthAddrs);
+                        ts.Complete();
+                    }
+                }
+
+                RedisClient.GetDatabase().HashDelete(_checkOutboundKey + rackTask.RackNo, hashFields);
+            }
+           return IdsResult<RackTask>.ok();
+        }
+
+        private IdsResult<RackTask> CancelPutwayTask(RackTask rackTask) {
+
+            if (string.IsNullOrEmpty(rackTask.RackSide))
+            {
+                return IdsResult<RackTask>.failure($"上传的货架{rackTask.RackNo}信息面号为空");
+            }
+            if (!string.IsNullOrEmpty(rackTask.RackSide) && "A,B".IndexOf(rackTask.RackSide) < 0)
+            {
+                return IdsResult<RackTask>.failure($"货架{rackTask.RackNo}:面号{rackTask.RackSide} 不是A或B");
+            }
+            using (var ctx = DbContext()) {
+                using (var ts = new TransactionScope()) {
+                    var task = (from rt in ctx.RackTask
+                                where rt.RackNo == rackTask.RackNo
+                                && rt.RackSide == rackTask.RackSide
+                                && rt.TaskState == (int)TaskStates.UP_WAIT
+                                select rt).FirstOrDefault();
+                    if (task != null)
+                    {
+                        var cancelTask = new RackCancelTask();
+                        ObjectExtensions.CopyProperties(task, cancelTask);
+                        cancelTask.updateInit();
+                        ctx.Insert(cancelTask);
+                        ctx.Remove(task);
+                        ctx.SaveChanges();
+
+                        //检查当前位置信息是空的货架
+                        List<int?> allowLight = (from light in ctx.RackInfo
+                                         where light.RackNo == rackTask.RackNo
+                                         && light.RackSide == rackTask.RackSide
+                                         && light.Loading == (int)LocationStates.FREE
+                                         select light.Location).ToList();
+                        List<int> onlight = new List<int>();
+                        allowLight.ForEach(item =>
+                        {
+                            if (item != null)
+                                onlight.Add(item??0);
+                        });
+                        //先亮绿灯吧？后续按照需求规格来设置颜色
+                        if (allowLight != null && allowLight.Count > 0) {
+                            SmartMaterialRackNode.Instance.NoticeRackMultiLightOff(rackTask.RackNo, onlight);
+                        }
+                        ts.Complete();
+                    }
+                }
+              
+                string token = RedisClient.GetDatabase().StringGet(_checkPutwayKey + rackTask.RackNo + ":" + rackTask.RackSide);
+                if (!string.IsNullOrWhiteSpace(token))
+                {
+                    RedisClient.GetDatabase().KeyDelete(_checkPutwayKey + rackTask.RackNo + ":" + rackTask.RackSide);
+                }
+
+                //已经点亮的灯需要熄灭
+
+            }
+           return IdsResult<RackTask>.ok();
         }
     }
 }

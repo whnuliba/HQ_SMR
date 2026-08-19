@@ -1,4 +1,5 @@
-﻿using IDS.Base;
+﻿using Autofac.Core;
+using IDS.Base;
 using IDS.Common;
 using IDS.HQ.Module;
 using IDS.HQ.Service;
@@ -40,6 +41,17 @@ namespace IDS.HQ.Controller
             if (!RequestData<RackTask>.isRequest(data))
                 return ResponseEntity<RackTask>.Error("上传信息为空");
             IdsResult<RackTask> res = _adapter.Outbound(data.data);
+            if (res.Success)
+                return ResponseEntity<RackTask>.Success(res.Data);
+            else return ResponseEntity<RackTask>.Error(res.Message);
+        } 
+        [HttpPost]
+        [Route("CancelTask")]
+        public ResponseEntity<RackTask> CancelTask(RequestData<RackTask> data)
+        {
+            if (!RequestData<RackTask>.isRequest(data))
+                return ResponseEntity<RackTask>.Error("上传信息为空");
+            IdsResult<RackTask> res = _adapter.CancelTask(data.data);
             if (res.Success)
                 return ResponseEntity<RackTask>.Success(res.Data);
             else return ResponseEntity<RackTask>.Error(res.Message);

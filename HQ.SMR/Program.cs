@@ -79,7 +79,6 @@ public partial class Program
 
         IServerConnection serverConnection = new HYBootstrap().RegisterServiceAndStartup(new IdsEndPoint(ip, smrSocketPort));
         //注册全局连接器
-       // ServerConnectionHolder.SetConnection(serverConnection);
         #endregion
         //初始化货架缓存
        // SmartMaterialRackNode.Instance.Initialize();

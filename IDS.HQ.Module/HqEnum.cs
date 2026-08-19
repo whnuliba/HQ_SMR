@@ -23,4 +23,9 @@ namespace IDS.HQ.Module
         //载货
         LOADING = 1, 
     }
+    public enum Light { 
+      R =0,
+      G = 1,
+      B = 2,
+    }
 }

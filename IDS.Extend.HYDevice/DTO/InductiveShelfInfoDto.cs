@@ -61,21 +61,21 @@ namespace IDS.Extend.HYDevice.DTO
                 info._locations = new List<LocationInfo>();
             }
             // 同步货位状态信息
-            var rackNode = SmartMaterialRackNode.Instance.GetRackNode(shelfNo);
-            if (rackNode != null) {
-                rackNode.locationStatusInfos.Clear();
-                var locs =  info._locations.Select(item =>{
-                    return new LocationStatusInfo {
-                        RackNo = shelfNo,
-                        CellNo = item.Addr.ToString().PadLeft(4, '0'),
-                        CellState = item.Status.ToString(),
-                        Timestamp = DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss"),
-                        UserId = "HQ_SMR",
-                        SessionId = new Guid().ToString("N")
-                    };
-                }).ToList();
-                rackNode.locationStatusInfos.AddRange(locs);
-            }
+            //var rackNode = SmartMaterialRackNode.Instance.GetRackNode(shelfNo);
+            //if (rackNode != null) {
+            //    rackNode.locationStatusInfos.Clear();
+            //    var locs =  info._locations.Select(item =>{
+            //        return new LocationStatusInfo {
+            //            RackNo = shelfNo,
+            //            CellNo = item.Addr.ToString().PadLeft(4, '0'),
+            //            CellState = item.Status.ToString(),
+            //            Timestamp = DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss"),
+            //            UserId = "HQ_SMR",
+            //            SessionId = new Guid().ToString("N")
+            //        };
+            //    }).ToList();
+            //    rackNode.locationStatusInfos.AddRange(locs);
+            //}
 
             return info;
         }

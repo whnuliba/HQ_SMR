@@ -68,6 +68,9 @@ public partial class RackDbContext : IDSContext
     public virtual DbSet<RackInfo> RackInfo { get; set; }
 
     public virtual DbSet<Rack> Rack { get; set; }
+    public virtual DbSet<UserInfo>  UserInfo  { get; set; }
+    public virtual DbSet<RackCancelTask> RackCancelTask { get; set; }
+    public virtual DbSet<RackTaskHis> RackTaskHis { get; set; }
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         switch (_dbType.ToLower())

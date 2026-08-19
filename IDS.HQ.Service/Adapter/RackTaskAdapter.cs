@@ -23,5 +23,8 @@ namespace IDS.HQ.Service.Adapter
         public IdsResult<RackTask> Outbound(RackTask rackTask) {
             return _service.Outbound(rackTask);
         }
+        public IdsResult<RackTask> CancelTask(RackTask rackTask) {
+            return _service.CancelTask(rackTask);
+        }
     }
 }

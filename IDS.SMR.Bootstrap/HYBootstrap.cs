@@ -81,6 +81,7 @@ namespace IDS.SMR.Bootstrap
                 _dictionary.AddOrUpdate(serverConnection.ServiceName, serverConnection, (key, oldValue) => serverConnection);
             }
             serverConnection.Initialize();
+            ServerConnectionHolder.SetConnection(serverConnection);
             return serverConnection;
         }
     }
