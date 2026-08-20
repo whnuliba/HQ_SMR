@@ -6,6 +6,7 @@ using IDS.HQ.Service.IService;
 using IDS.Ioc;
 using IDS.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -14,7 +15,7 @@ using System.Transactions;
 namespace IDS.HQ.Service
 {
     [AutoInjection]
-    public class UserInfoService : DbLongBaseService<UserInfo>, IUserInfoService
+    public class UserInfoService : DbBaseService<UserInfo>, IUserInfoService
     {
         public IdsRedis RedisClient { get; set; }
         public IDbContextFactory<RackDbContext> DbContextFactory { get; set; }
@@ -34,17 +35,44 @@ namespace IDS.HQ.Service
                 return IdsResult<JwtUser>.failure("用户或密码不能为空");
             }
             using (var ctx = DbContext()) {
-                var user = ctx.Query<JwtUser>(f => f.Username == userInfo.Username).FirstOrDefault();
+                var user = ctx.Query<UserInfo>(f => f.Username == userInfo.Username).FirstOrDefault();
                 if(user==null)
                     return IdsResult<JwtUser>.failure("用户或密码不存在");
                 string secrt = RsaHelper.Decrypt(user.Password, prk, true);
                 if(!userInfo.Password.Equals(secrt))
                     return IdsResult<JwtUser>.failure("用户或密码错误!");
                 string token = RsaHelper.Encrypt(user.Username, puk, true);
-                user.Token = token;
-                return IdsResult<JwtUser>.ok(user);
+                var jwtUser = new JwtUser()
+                {
+                    Username = user.Username,
+                    WorkNo = user.WorkNo,
+                    Id= user.Id
+                };
+                jwtUser.Token = token;
+                return IdsResult<JwtUser>.ok(jwtUser);
             }
        
+        }
+
+        public IdsResult<JwtUser> Permissions(string username)
+        {
+            if (string.IsNullOrEmpty(username))
+                return IdsResult<JwtUser>.failure("没有权限");
+            using (var ctx = DbContext()) {
+                var user = ctx.Query<UserInfo>(f => f.Username == username).FirstOrDefault();
+                if(user==null)
+                    return IdsResult<JwtUser>.failure($"用户{username}没有权限");
+                var jwtUser = new JwtUser()
+                {
+                    Username = user.Username,
+                    WorkNo = user.WorkNo,
+                    Id = user.Id
+                };
+                if (!string.IsNullOrEmpty(user.Permissions)) {
+                    jwtUser.Permissions = user.Permissions.Split(",").ToList();
+                }
+                return IdsResult<JwtUser>.ok(jwtUser);
+            }
         }
 
         public override int save(UserInfo userInfo, string?[] properites = null)
@@ -71,7 +99,7 @@ namespace IDS.HQ.Service
                     int i = 0;
                     userInfo.Password = RsaHelper.Encrypt(userInfo.Password, puk, true);
                     long userId = IdUtils.Id;
-                    userInfo.Id = userId;
+                    userInfo.Id = userId+"";
                     userInfo.Status = 0;
                     userInfo.Password = _procPwd;
                     userInfo.saveInit();

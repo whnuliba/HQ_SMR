@@ -78,7 +78,7 @@ namespace IDS.Extend.HYDevice.ReceiveHandler
             using (var ctx = dbContext.CreateDbContext())
             {
 
-                var uptasktask = ctx.Query<RackTask>(f => f.Id == (long)taskId && f.TaskState == (int)TaskStates.UP_WAIT).FirstOrDefault();
+                var uptasktask = ctx.Query<RackTask>(f => f.Id == taskId && f.TaskState == (int)TaskStates.UP_WAIT).FirstOrDefault();
                 if (uptasktask == null)
                 {
                     return IdsResult<object>.failure($"设备{rackNode.No}没有等待上架的任务{taskId}，基于设备特性，每台料架智能有有个上架任务");
@@ -118,7 +118,7 @@ namespace IDS.Extend.HYDevice.ReceiveHandler
             }
             using (var ctx = dbContext.CreateDbContext())
             {
-                var uptasktask = ctx.Query<RackTask>(f => f.Id == taskId && f.TaskState == (int)TaskStates.UP_WAIT).FirstOrDefault();
+                var uptasktask = ctx.Query<RackTask>(f => f.Id == taskId_ && f.TaskState == (int)TaskStates.UP_WAIT).FirstOrDefault();
                 if (uptasktask == null)
                 {
                     return IdsResult<object>.failure($"设备{rackNode.No}没有等待上架的任务{taskId}，基于设备特性，每台料架智能有有个上架任务");
@@ -170,9 +170,9 @@ namespace IDS.Extend.HYDevice.ReceiveHandler
             {
                 return IdsResult<object>.failure($"货架{rackNode.No}:储位{locationInfo.Addr}非法拿起，当前该储位不在出库队列，请检查");
             }
-            List<long> ids = new List<long>();
-            Dictionary<long?, List<int?>> taskDic = new Dictionary<long?, List<int?>>();
-            Dictionary<int, long> locDic = new Dictionary<int, long>();
+            List<string> ids = new List<string>();
+            Dictionary<string?, List<int?>> taskDic = new Dictionary<string?, List<int?>>();
+            Dictionary<int, string> locDic = new Dictionary<int, string>();
 
             List<int> addrCaches = new List<int>();
             foreach (var addr in entry)
@@ -180,16 +180,16 @@ namespace IDS.Extend.HYDevice.ReceiveHandler
                 if (addr.Name.HasValue && addr.Name.TryParse(out int _addr) && addr.Value.HasValue && addr.Value.TryParse(out long _id))
                 {
                     addrCaches.Add(_addr);
-                    ids.Add(_id);
-                    if (!taskDic.ContainsKey(_id))
+                    ids.Add(addr.Value);
+                    if (!taskDic.ContainsKey(addr.Value))
                     {
-                        taskDic.Add(_id, new List<int?>() { _addr });
+                        taskDic.Add(addr.Value, new List<int?>() { _addr });
                     }
                     else {
-                        taskDic[_id].Add(_addr);
+                        taskDic[addr.Value].Add(_addr);
                     }
 
-                    locDic.Add(_addr, _id);
+                    locDic.Add(_addr, addr.Value);
                 }
             }
             if (!addrCaches.Contains(locationInfo.Addr)) { 
@@ -202,7 +202,7 @@ namespace IDS.Extend.HYDevice.ReceiveHandler
             if (!locDic.ContainsKey(locationInfo.Addr)) {
                 return IdsResult<object>.failure($"货架{rackNode.No}:储位{locationInfo.Addr}非法拿起，当前该储位不在出库队列，请检查");
             }
-            long taskId = locDic[locationInfo.Addr];
+            string taskId = locDic[locationInfo.Addr];
 
             //检查当前下架任务是否在库
             using (var ctx = dbContext.CreateDbContext()) {

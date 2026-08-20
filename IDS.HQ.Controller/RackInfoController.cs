@@ -17,11 +17,11 @@ namespace IDS.HQ.Controller
     [Route("location")]
     [PropertiesAutowired]
     [ApiController]
-    public class RackInfoController : DbLongBaseController<RackInfo>
+    public class RackInfoController : DbBaseController<RackInfo>
     {
         public RackInfoAdapter _adapter { get; set; }
         [ApiExplorerSettings(IgnoreApi = true)]
-        public override DbLongBaseAdapter<RackInfo> Adapter()
+        public override DbBaseAdapter<RackInfo> Adapter()
         {
             return _adapter;
         }

@@ -7,9 +7,9 @@ using System.Threading.Tasks;
 
 namespace IDS.HQ.Module
 {
-    public class Rack : IdsLongBaseEntity
+    public class Rack : IdsBaseEntity
     {
-        public string RackNo { get; set; }
+        public string? RackNo { get; set; }
         public string? RackSide { get; set; }
         public int? Enable { get; set; }
         public int? Inductive { get; set; }

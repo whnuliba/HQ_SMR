@@ -5,7 +5,7 @@ using IDS.Persistence;
 
 namespace IDS.HQ.Service
 {
-    public interface IRackTaskService : IDbLongBaseService<RackTask>
+    public interface IRackTaskService : IDbBaseService<RackTask>
     { 
         IdsResult<RackTask> Putway(RackTask data);
         IdsResult<RackTask> Outbound(RackTask rackTask);

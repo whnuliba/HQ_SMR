@@ -2,7 +2,7 @@
 
 namespace IDS.HQ.Module
 {
-    public class RackTaskHis : IdsLongBaseEntity
+    public class RackTaskHis : IdsBaseEntity
     {
 
         public string? RackNo { get; set; }

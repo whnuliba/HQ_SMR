@@ -7,10 +7,11 @@ using System.Text;
 
 namespace IDS.HQ.Service.IService
 {
-    public interface IUserInfoService : IDbLongBaseService<UserInfo>
+    public interface IUserInfoService : IDbBaseService<UserInfo>
     {
         public int UpdatePwd(ChangeUserPassword pwdDto);
         public IdsResult<JwtUser> Login(UserInfo user);
+        public IdsResult<JwtUser> Permissions(string username);
     }
 
     public class ChangeUserPassword
@@ -24,5 +25,6 @@ namespace IDS.HQ.Service.IService
     public class JwtUser:UserInfo
     {
         public string? Token { set; get; }
+        public List<string> Permissions { set; get; }
     }
 }

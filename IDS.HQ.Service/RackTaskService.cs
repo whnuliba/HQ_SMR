@@ -17,13 +17,14 @@ using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json.Linq;
 using StackExchange.Redis;
+using System.Linq.Expressions;
 using System.Transactions;
 using ZstdSharp.Unsafe;
 
 namespace IDS.HQ.Service
 {
     [AutoInjection]
-    public class RackTaskService : DbLongBaseService<RackTask>, IRackTaskService
+    public class RackTaskService : DbBaseService<RackTask>, IRackTaskService
     {
         public object obj_lock = new object();
         public object obj_lock_out = new object();
@@ -58,7 +59,7 @@ namespace IDS.HQ.Service
                 }
                 using (var ctx = DbContext()) {
                     long id = IdUtils.Id;
-                    rackTask.Id = id;
+                    rackTask.Id = id+"";
                     //检查是否还有未完成的任务
                     var task = ctx.RackTask.Where(f => f.RackNo == rackTask.RackNo && f.RackSide == rackTask.RackSide && f.TaskState == (int)TaskStates.UP_WAIT).FirstOrDefault();
                     if (task != null) {
@@ -112,7 +113,7 @@ namespace IDS.HQ.Service
             }
             lock (obj_lock_out)
             {
-                rackTask.Id = IdUtils.Id;
+                rackTask.Id = IdUtils.Id+"";
                 RedisValue[] addresses =  RedisClient.GetDatabase().HashKeys(_checkOutboundKey + rackTask.RackNo);
                 List<int> addrCaches = new List<int>();
                 foreach (var addr in addresses)
@@ -391,6 +392,42 @@ namespace IDS.HQ.Service
 
             }
            return IdsResult<RackTask>.ok();
+        }
+        public override Page<RackTask> List(Page<RackTask> page, Expression<Func<RackTask, bool>> predicate)
+        {
+
+            var upload = page.requestData ?? new RackTask();
+            if (!string.IsNullOrWhiteSpace(upload.RackNo))  //托盘编码批量
+            {
+                var trayNum = upload.RackNo.Split(",").ToList();
+                if (predicate == null)
+                    predicate = f => trayNum.Contains(f.RackNo);
+                else
+                    predicate = predicate.And(f => trayNum.Contains(f.RackNo));
+            }
+            if (!string.IsNullOrWhiteSpace(upload.PPID))  //托盘编码批量
+            {
+                var trayNum = upload.PPID.Split(",").ToList();
+                if (predicate == null)
+                    predicate = f => trayNum.Contains(f.PPID);
+                else
+                    predicate = predicate.And(f => trayNum.Contains(f.PPID));
+            }
+            if (upload.TaskType != null) {
+                if (predicate == null)
+                    predicate = f => f.TaskType == upload.TaskType;
+                else
+                    predicate = predicate.And(f => f.TaskType == upload.TaskType);
+            }
+            if (upload.TaskState != null) {
+
+                if (predicate == null)
+                    predicate = f => f.TaskState == upload.TaskState;
+                else
+                    predicate = predicate.And(f => f.TaskState == upload.TaskState);
+            }
+            return base.List(page, predicate);
+
         }
     }
 }

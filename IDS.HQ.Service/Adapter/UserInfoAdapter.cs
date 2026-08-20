@@ -10,10 +10,10 @@ using System.Text;
 namespace IDS.HQ.Service.Adapter
 {
     [AutoInjection]
-    public class UserInfoAdapter : DbLongBaseAdapter<UserInfo>
+    public class UserInfoAdapter : DbBaseAdapter<UserInfo>
     {
         public IUserInfoService _userInfoService { set; get; }
-        public override IDbLongBaseService<UserInfo> Service()
+        public override IDbBaseService<UserInfo> Service()
         {
            return _userInfoService;
         }
@@ -23,6 +23,9 @@ namespace IDS.HQ.Service.Adapter
         }
         public IdsResult<JwtUser> Login(UserInfo user) {
             return _userInfoService.Login(user);
+        }
+        public IdsResult<JwtUser> Permissions(string username) {
+            return _userInfoService.Permissions(username);
         }
     }
 }

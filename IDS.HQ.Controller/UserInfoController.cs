@@ -17,11 +17,11 @@ namespace IDS.HQ.Controller
     [Route("user")]
     [PropertiesAutowired]
     [ApiController]
-    public class UserInfoController : DbLongBaseController<UserInfo>
+    public class UserInfoController : DbBaseController<UserInfo>
     {
         public UserInfoAdapter _aserInfoAdapter { set; get; }
         [ApiExplorerSettings(IgnoreApi = true)]
-        public override DbLongBaseAdapter<UserInfo> Adapter()
+        public override DbBaseAdapter<UserInfo> Adapter()
         {
             return _aserInfoAdapter;
         }
@@ -42,6 +42,27 @@ namespace IDS.HQ.Controller
             if (!RequestData<UserInfo>.isRequest(data))
                 return ResponseEntity<JwtUser>.Error("上传信息为空");
             IdsResult<JwtUser> res = _aserInfoAdapter.Login(data.data);
+            if (res.Success)
+                return ResponseEntity<JwtUser>.Success(res.Data);
+            else return ResponseEntity<JwtUser>.Error(res.Message);
+        }
+        [HttpPost]
+        [Route("Permissions")]
+        public ResponseEntity<JwtUser> Permissions()
+        {
+
+            var headers = HttpContext.Request.Headers;
+            string token = string.Empty;
+            if (headers.ContainsKey("token")) {
+                token = headers["token"];
+            }
+            if (string.IsNullOrEmpty(token)) {
+                return ResponseEntity<JwtUser>.Error("当前用户没有权限");
+            }
+            string puk = AppConfig.GetConfigInfo("RSA:publicKey");
+            string prk = AppConfig.GetConfigInfo("RSA:privateKey");
+            string username = RsaHelper.Decrypt(token, prk, true);
+            IdsResult<JwtUser> res = _aserInfoAdapter.Permissions(username);
             if (res.Success)
                 return ResponseEntity<JwtUser>.Success(res.Data);
             else return ResponseEntity<JwtUser>.Error(res.Message);

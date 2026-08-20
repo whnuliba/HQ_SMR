@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace IDS.HQ.Module
 {
-    public class RackInfo:IdsLongBaseEntity
+    public class RackInfo:IdsBaseEntity
     {
 
         public string? RackNo { get; set; }

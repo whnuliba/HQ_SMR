@@ -21,7 +21,7 @@ using System.Transactions;
 namespace IDS.HQ.Service
 {
     [AutoInjection]
-    public class RackInfoService : DbLongBaseService<RackInfo>, IRackInfoService
+    public class RackInfoService : DbBaseService<RackInfo>, IRackInfoService
     {
         public object obj_lock = new object();
         public IdsRedis RedisClient { get; set; }
@@ -64,7 +64,7 @@ namespace IDS.HQ.Service
                     Port = rackInfo.Port,
                     Inductive = 1,
                     Enable = 1,
-                    Id = IdUtils.Id,
+                    Id = IdUtils.Id+"",
                     ASideQty= rackInfo.ASideCount,
                     BSideQty = rackInfo.ASideCount,
                 };
@@ -83,7 +83,7 @@ namespace IDS.HQ.Service
                         Inductive = 1,
                         Location = i,
                         Enable = 1,
-                        Id = id
+                        Id = id + ""
                     };
                     rack.saveInit();
                     rackinfos.AddRange(rack);
@@ -101,7 +101,7 @@ namespace IDS.HQ.Service
                         Inductive = 1,
                         Location = i,
                         Enable = 1,
-                        Id = id
+                        Id = id + ""
                     };
                     rack.saveInit();
                     rackinfos.AddRange(rack);

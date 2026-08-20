@@ -10,10 +10,10 @@ using System.Text;
 namespace IDS.HQ.Service.Adapter
 {
     [AutoInjection]
-    public class RackInfoAdapter : DbLongBaseAdapter<RackInfo>
+    public class RackInfoAdapter : DbBaseAdapter<RackInfo>
     {
         public IRackInfoService _service { set; get; }
-        public override IDbLongBaseService<RackInfo> Service()
+        public override IDbBaseService<RackInfo> Service()
         {
             return _service;
         }

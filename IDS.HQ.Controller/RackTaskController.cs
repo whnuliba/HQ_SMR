@@ -16,11 +16,11 @@ namespace IDS.HQ.Controller
     [Route("task")]
     [PropertiesAutowired]
     [ApiController]
-    public class RackTaskController : DbLongBaseController<RackTask>
+    public class RackTaskController : DbBaseController<RackTask>
     {
         public RackTaskAdapter  _adapter { get; set; }
         [ApiExplorerSettings(IgnoreApi = true)]
-        public override DbLongBaseAdapter<RackTask> Adapter()
+        public override DbBaseAdapter<RackTask> Adapter()
         {
             return _adapter;
         }

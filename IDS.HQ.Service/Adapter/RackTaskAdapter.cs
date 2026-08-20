@@ -9,10 +9,10 @@ using System.Text;
 namespace IDS.HQ.Service.Adapter
 {
     [AutoInjection]
-    public class RackTaskAdapter : DbLongBaseAdapter<RackTask>
+    public class RackTaskAdapter : DbBaseAdapter<RackTask>
     {
         public IRackTaskService _service{ set; get; }
-        public override IDbLongBaseService<RackTask> Service()
+        public override IDbBaseService<RackTask> Service()
         {
             return _service;
         }

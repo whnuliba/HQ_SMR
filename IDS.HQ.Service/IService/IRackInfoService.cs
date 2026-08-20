@@ -6,7 +6,7 @@ using IDS.Persistence;
 
 namespace IDS.HQ.Service
 {
-    public interface IRackInfoService : IDbLongBaseService<RackInfo>
+    public interface IRackInfoService : IDbBaseService<RackInfo>
     { 
         public IdsResult<object> RegisterRackInfo(RegisterRackInfoDto rackInfo);
     }
