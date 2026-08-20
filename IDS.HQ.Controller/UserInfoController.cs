@@ -61,7 +61,14 @@ namespace IDS.HQ.Controller
             }
             string puk = AppConfig.GetConfigInfo("RSA:publicKey");
             string prk = AppConfig.GetConfigInfo("RSA:privateKey");
-            string username = RsaHelper.Decrypt(token, prk, true);
+            string username = string.Empty;
+            try
+            {
+                username = RsaHelper.Decrypt(token, prk, true);
+            }
+            catch (Exception ex) {
+                return ResponseEntity<JwtUser>.Error("当前用户没有权限");
+            }
             IdsResult<JwtUser> res = _aserInfoAdapter.Permissions(username);
             if (res.Success)
                 return ResponseEntity<JwtUser>.Success(res.Data);

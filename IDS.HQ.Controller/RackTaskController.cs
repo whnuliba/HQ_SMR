@@ -56,5 +56,17 @@ namespace IDS.HQ.Controller
                 return ResponseEntity<RackTask>.Success(res.Data);
             else return ResponseEntity<RackTask>.Error(res.Message);
         }
+
+        [HttpPost]
+        [Route("ForceCompleteTask")]
+        public ResponseEntity<RackTask> ForceCompleteTask(RequestData<RackTask> data)
+        {
+            if (!RequestData<RackTask>.isRequest(data))
+                return ResponseEntity<RackTask>.Error("上传信息为空");
+            IdsResult<RackTask> res = _adapter.ForceCompleteTask(data.data);
+            if (res.Success)
+                return ResponseEntity<RackTask>.Success(res.Data);
+            else return ResponseEntity<RackTask>.Error(res.Message);
+        }
     }
 }

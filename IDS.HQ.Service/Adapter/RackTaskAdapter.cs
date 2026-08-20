@@ -26,5 +26,8 @@ namespace IDS.HQ.Service.Adapter
         public IdsResult<RackTask> CancelTask(RackTask rackTask) {
             return _service.CancelTask(rackTask);
         }
+        public IdsResult<RackTask> ForceCompleteTask(RackTask rackTask) {
+            return _service.ForceCompleteTask(rackTask);
+        }
     }
 }

@@ -429,5 +429,171 @@ namespace IDS.HQ.Service
             return base.List(page, predicate);
 
         }
+
+        public IdsResult<RackTask> ForceCompleteTask(RackTask rackTask)
+        {
+            //前置完成任务必须输入任务ID和RACK_NO
+
+            //任务强制完成不对系统做任务处理。只是对系统内部数据变更
+
+            if (rackTask == null || string.IsNullOrWhiteSpace(rackTask.RackNo))
+            {
+                return IdsResult<RackTask>.failure("下架信息为空，或者货架号为空");
+            }
+            if (rackTask.TaskType != (int)TaskTypes.IN && rackTask.TaskType != (int)TaskTypes.OUT)
+            {
+                return IdsResult<RackTask>.failure($"货架{rackTask.RackNo}没有指定需要取消的上下架类型");
+            }
+            if (rackTask.TaskType == (int)TaskTypes.IN)
+            {
+                return ForceCompleteInTask(rackTask);
+            }
+            if (rackTask.TaskType == (int)TaskTypes.OUT)
+            {
+                return ForceCompleteOutboundTask(rackTask);
+            }
+            return IdsResult<RackTask>.ok();
+        }
+
+        private IdsResult<RackTask> ForceCompleteOutboundTask(RackTask rackTask) {
+
+            //当前所有待出库的储位号都在这里
+            Dictionary<string, List<int>> locDic = new Dictionary<string, List<int>>();
+            //完成后需要删除的储位ID
+            List<int?> completeDoc = new List<int?>();
+            if (string.IsNullOrEmpty(rackTask.Locations))
+            {
+                //判断是否有任务ID
+                using (var ctx = DbContext())
+                {
+                    RackTask task= ctx.RackTask.Where(f => f.Id == rackTask.Id).FirstOrDefault();
+                    if (task != null)
+                        rackTask.Locations = task.Locations; ;
+                }
+                if (string.IsNullOrEmpty(rackTask.Locations))
+                    return IdsResult<RackTask>.failure($"没有下发需要取消的储位号,货架:{rackTask.RackNo}");
+                //获取redis的所有KV进行比对
+               var entries =  RedisClient.GetDatabase().HashGetAll(_checkOutboundKey + rackTask.RackNo);
+                if (entries!=null && entries.Length > 0) {
+                    foreach (var item in entries)
+                    {
+                        if (!item.Name.TryParse(out int addr))
+                            continue;
+                        if (locDic.ContainsKey(item.Value))
+                        {
+                           
+                            locDic[item.Value].Add(addr);
+                        }
+                        else {
+                            locDic.Add(item.Value, new List<int>() { addr });
+                        }
+                        completeDoc.Add(addr);
+                    }
+                }
+            }
+            //解析储位号
+            string[] stockAddress = rackTask.Locations.Split(",");
+            if (stockAddress.Length == 0)
+            {
+                return IdsResult<RackTask>.failure($"没有下发需要下架的储位号,货架:{rackTask.RackNo}");
+            }
+            //TODO判断若没有指定取消储位的方法,及时缓存的所有任务进行取消
+            //该功能待业务确定，到任务级别还是位置级别
+            //判断储位号是否在当前的缓存中 同时判断储位号是否已经下发过出库做了
+            List<int> ligthAddrs = new List<int>();
+            RedisValue[] hashFields = new RedisValue[stockAddress.Length];
+            for (int i = 0; i < completeDoc.Count; i++)
+            {
+                hashFields[i] = new RedisValue(completeDoc[i]+"");
+            }
+            using (var ctx = DbContext())
+            {
+                using (var ts = new TransactionScope())
+                {
+                    var task = (from rt in ctx.RackTask
+                                where rt.RackNo == rackTask.RackNo
+                                && rt.RackSide == rackTask.RackSide
+                                && rt.TaskState == (int)TaskStates.DOWN_WAIT
+                                select rt).FirstOrDefault();
+                    if (task != null)
+                    {
+
+                        //完成任务
+                        task.updateInit();
+                        task.updateInit();
+                        task.TaskState = (int)TaskStates.DOWN_COMPLETE;
+                        ctx.Entry(task).Property(p => p.LastModifyTime).IsModified = true;
+                        ctx.Entry(task).Property(p => p.LastModifyUser).IsModified = true;
+                        ctx.Entry(task).Property(p => p.TaskState).IsModified = true;
+                        ctx.SaveChanges();
+                        int i = ctx.RackInfo
+                            .Where(r => r.RackNo == task.RackNo && completeDoc.Contains(r.Location))
+                            .ExecuteUpdate(setters => setters
+                                .SetProperty(r => r.LastModifyTime, DateTime.Now)
+                                .SetProperty(r => r.Loading, (int)LocationStates.FREE)
+                                   .SetProperty(r => r.PPID, string.Empty)
+                            );
+                        RedisClient.GetDatabase().HashDelete(_checkOutboundKey + rackTask.RackNo, hashFields);
+                        ts.Complete();
+                    }
+                }
+            }
+            return IdsResult<RackTask>.ok();
+
+        }
+        private IdsResult<RackTask> ForceCompleteInTask(RackTask rackTask) {
+            //完成入库任务.
+            using (var ctx = DbContext()) {
+                if (string.IsNullOrEmpty(rackTask.RackNo) || string.IsNullOrEmpty(rackTask.RackSide) || string.IsNullOrEmpty(rackTask.Id)) {
+                    return IdsResult<RackTask>.failure("强制完成任务必须执行货架位置");
+                }
+                if (rackTask.Location == null) {
+                    return IdsResult<RackTask>.failure("强制完成任务必须执行货架位置");
+                }
+               var task = ctx.RackTask.Where(f=>f.RackNo==rackTask.RackNo&&f.RackSide==rackTask.RackSide && rackTask.TaskState==(int)TaskStates.UP_WAIT).FirstOrDefault();
+                if (task == null && !string.IsNullOrEmpty(rackTask.Id)) {
+                    task = ctx.RackTask.Where(f => f.Id == rackTask.Id && f.RackSide == rackTask.RackSide && rackTask.TaskState == (int)TaskStates.UP_WAIT).FirstOrDefault();
+                }
+                if (task == null) {
+                    return IdsResult<RackTask>.failure($"货架{rackTask.RackNo}-{rackTask.Id}等待入库的任务不存在，或任务已经完成" );
+                }
+                //检查当前位置是否空闲
+                bool isAlowComplete = false;
+                var rackinfo = ctx.RackInfo.Where(f => f.RackNo == rackTask.RackNo && f.Location == rackTask.Location).FirstOrDefault();
+                if (rackinfo == null)
+                {
+                    return IdsResult<RackTask>.failure($"货架{rackTask.RackNo}-{rackTask.Id}-位置{rackTask.Location}在数据库中查无记录");
+                }
+                if (rackinfo != null && rackinfo.Loading==(int)LocationStates.LOADING  && task.PPID.Equals(rackinfo.PPID)) {
+                    isAlowComplete = true;
+                }
+                if (rackinfo != null && rackinfo.Loading == (int)LocationStates.LOADING && !task.PPID.Equals(rackinfo.PPID)) {
+                    return IdsResult<RackTask>.failure($"货架{rackTask.RackNo}-{rackTask.Id}-位置{rackTask.Location}是载货状态及PPID不一致，不可强制");
+                }
+                using (var ts = new TransactionScope()) {
+                    //修改货架指定的任务号
+                    task.updateInit();
+                    task.TaskState = (int)TaskStates.UP_COMPLETE;
+                     ctx.Entry(task).Property(p => p.LastModifyTime).IsModified = true;
+                     ctx.Entry(task).Property(p => p.LastModifyUser).IsModified = true;
+                     ctx.Entry(task).Property(p => p.TaskState).IsModified = true;
+                     ctx.SaveChanges();
+                    if (isAlowComplete && rackinfo.Loading == (int)LocationStates.FREE) {
+                        rackinfo.Loading = (int)LocationStates.FREE;
+                        rackinfo.PPID = task.PPID;
+                        ctx.Entry(rackinfo).Property(p => p.LastModifyTime).IsModified = true;
+                        ctx.Entry(rackinfo).Property(p => p.LastModifyUser).IsModified = true;
+                        ctx.Entry(rackinfo).Property(p => p.Loading).IsModified = true;
+                        ctx.Entry(rackinfo).Property(p => p.PPID).IsModified = true;
+                        ctx.SaveChanges();
+                    }
+                    RedisClient.GetDatabase().KeyDelete(_checkPutwayKey + rackTask.RackNo + ":" + rackTask.RackSide);
+                    ts.Complete();
+                }
+
+                return IdsResult<RackTask>.ok();
+            }
+
+        }
     }
 }
