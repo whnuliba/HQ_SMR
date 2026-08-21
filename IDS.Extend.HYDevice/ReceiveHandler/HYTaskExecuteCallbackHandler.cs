@@ -27,7 +27,7 @@ namespace IDS.Extend.HYDevice.ReceiveHandler
             deviceInfo.RackNo = session.ClientId;
             string str = $"客户端IP{session.RequestEndPoint.Address};客户端端口{session.RequestEndPoint.Port};内容是ID{session.SessionId}";
             Console.WriteLine(str);
-            return IdsResult<object>.ok();
+            return IdsResult<object>.ok("已经收到反馈信息了");
         }
     }
 }

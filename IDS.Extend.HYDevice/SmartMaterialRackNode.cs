@@ -45,31 +45,31 @@ namespace IDS.Extend.HYDevice
                 return node;
             return node;
         }
-        public void NoticeRackMultiLightOn(string rackNo, Dictionary<int, byte> OnLight) {
+        public void NoticeRackMultiLightOn(string rackNo, Dictionary<int, byte> OnLight, Action<IdsSession>? action = null) {
 
             if (OnLight != null && OnLight.Count > 0)
             {
                 var rack = GetRackNode(rackNo);
                 var result = OnLight.GroupBy(kvp => kvp.Value)
                     .ToDictionary(g => g.Key, g => g.Where(f=>f.Key!=null).Select(kvp => kvp.Key).ToList());
-                
+                //这个地方取决于要发多少总颜色的灯信息
                 foreach (var kvp in result) {
                     var conn = ServerConnectionHolder.GetDefaultConnection();
                     var idsEndpoint = new IdsEndPoint(rack.IP, rack.Port);
                     //获取报文
                     var message = DeviceMessage.GetMultiLightOnMessage(kvp.Value, kvp.Key);
-                    conn.Send(message, idsEndpoint);
+                    conn.Send(message, idsEndpoint, action);
                 }
             }
         }
-        public void NoticeRack(string rackNo, byte[] data) {
+        public void NoticeRack(string rackNo, byte[] data,Action<IdsSession>? action=null) {
 
             var rack = GetRackNode(rackNo);
             var conn = ServerConnectionHolder.GetDefaultConnection();
             var idsEndpoint = new IdsEndPoint(rack.IP, rack.Port);
-            conn.Send(data, idsEndpoint);
+            conn.Send(data, idsEndpoint, action);
         }
-        public void NoticeRackMultiLightOff(string rackNo, List<int> addr)
+        public void NoticeRackMultiLightOff(string rackNo, List<int> addr, Action<IdsSession>? action = null)
         {
 
             if (addr != null && addr.Count > 0)
@@ -78,7 +78,7 @@ namespace IDS.Extend.HYDevice
                 var conn = ServerConnectionHolder.GetDefaultConnection();
                 var message = DeviceMessage.GetMultiLightOffMessage(addr);
                 var idsEndpoint = new IdsEndPoint(rack.IP, rack.Port);
-                conn.Send(message, idsEndpoint);
+                conn.Send(message, idsEndpoint, action);
             }
         }
 

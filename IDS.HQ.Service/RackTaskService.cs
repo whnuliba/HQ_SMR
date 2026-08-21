@@ -70,6 +70,7 @@ namespace IDS.HQ.Service
                         try
                         {
                             rackTask.TaskState = (int)TaskStates.UP_WAIT;
+                            rackTask.TaskType = (int)TaskTypes.IN;
                             rackTask.saveInit();
                             ctx.Insert(rackTask);
                             //处理亮灯问题。
@@ -152,6 +153,7 @@ namespace IDS.HQ.Service
                         try
                         {
                             rackTask.TaskState = (int)TaskStates.DOWN_WAIT;
+                            rackTask.TaskType = (int)TaskTypes.OUT;
                             rackTask.saveInit();
                             ctx.Insert(rackTask);
                             //存入到redis
@@ -322,6 +324,8 @@ namespace IDS.HQ.Service
                     {
                         var cancelTask = new RackCancelTask();
                         ObjectExtensions.CopyProperties(task, cancelTask);
+                        cancelTask.Id = IdUtils.Id + "";
+                        cancelTask.SourceId = task.Id;
                         cancelTask.updateInit();
                         ctx.Insert(cancelTask);
                         ctx.Remove(task);
@@ -357,6 +361,8 @@ namespace IDS.HQ.Service
                     {
                         var cancelTask = new RackCancelTask();
                         ObjectExtensions.CopyProperties(task, cancelTask);
+                        cancelTask.Id = IdUtils.Id + "";
+                        cancelTask.SourceId = task.Id;
                         cancelTask.updateInit();
                         ctx.Insert(cancelTask);
                         ctx.Remove(task);

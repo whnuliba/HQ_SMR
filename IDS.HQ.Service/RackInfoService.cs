@@ -3,6 +3,7 @@ using IDS.Base;
 using IDS.Common;
 using IDS.Common.Utils;
 using IDS.Extend.HYDevice;
+using IDS.Extension;
 using IDS.HQ.Module;
 using IDS.HQ.Module.DTO;
 using IDS.Ioc;
@@ -16,6 +17,7 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json;
+using System.Linq.Expressions;
 using System.Transactions;
 
 namespace IDS.HQ.Service
@@ -183,6 +185,36 @@ namespace IDS.HQ.Service
 
             // 所有校验通过
             return IdsResult<object>.ok();
+        }
+
+        public override Page<RackInfo> List(Page<RackInfo> page, Expression<Func<RackInfo, bool>> predicate)
+        {
+            var upload = page.requestData ?? new RackInfo();
+            if (!string.IsNullOrWhiteSpace(upload.RackNo))  //托盘编码批量
+            {
+                var trayNum = upload.RackNo.Split(",").ToList();
+                if (predicate == null)
+                    predicate = f => trayNum.Contains(f.RackNo);
+                else
+                    predicate = predicate.And(f => trayNum.Contains(f.RackNo));
+            }
+            if (!string.IsNullOrWhiteSpace(upload.IP))  //托盘编码批量
+            {
+                var trayNum = upload.IP.Split(",").ToList();
+                if (predicate == null)
+                    predicate = f => trayNum.Contains(f.IP);
+                else
+                    predicate = predicate.And(f => trayNum.Contains(f.IP));
+            }
+            if (!string.IsNullOrWhiteSpace(upload.PPID))  //托盘编码批量
+            {
+                var trayNum = upload.PPID.Split(",").ToList();
+                if (predicate == null)
+                    predicate = f => trayNum.Contains(f.PPID);
+                else
+                    predicate = predicate.And(f => trayNum.Contains(f.PPID));
+            }
+            return base.List(page, predicate);
         }
     }
 }

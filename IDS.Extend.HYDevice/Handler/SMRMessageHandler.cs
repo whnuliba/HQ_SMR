@@ -1,6 +1,8 @@
 ﻿using IDS.Base.Utils;
 using IDS.Common;
 using IDS.Device.Communication;
+using IDS.Extend.HYDevice.ReceiveHandler;
+using log4net;
 using Microsoft.AspNetCore.Http;
 using Newtonsoft.Json.Linq;
 using System;
@@ -42,11 +44,14 @@ namespace IDS.Extend.HYDevice.Handler
                     value = baseUtil.GetSnowFlakeId(1l, 1l);
                 }
                 var session  = SessionContext.Instance.GetSession(value);
+                //有请求的Session
+                bool isRequest = true;
                 if (session == null) {
+                    isRequest = false;
                     //若不存在就自己创建一个呆SessionKey的
                     byte[] key = new byte[10];
                     Array.Copy(dataArray, 1, key, 0, 10);
-                    session = SessionContext.Instance.CreadeSession(value, serverConnection, dataArray);
+                    session = SessionContext.Instance.CreateSession(value, serverConnection, dataArray);
                     session.SessionKey = key;
                 }
                 //处理Session
@@ -66,7 +71,11 @@ namespace IDS.Extend.HYDevice.Handler
                  IPEndPoint = session.ResponseEndPoint,
                  Extend= rack,
                 };
-                hander?.Handle(dataArray, session,command);
+              var res =  hander?.Handle(dataArray, session,command);
+                if (isRequest) { 
+                    //处理完成，有问必有答
+                  session.taskCompletionSource.SetResult(res);
+                }
             }
             return IdsResult<E>.ok();
         }

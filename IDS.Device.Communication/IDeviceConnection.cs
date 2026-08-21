@@ -1,4 +1,5 @@
-﻿using System;
+﻿using IDS.Common;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -18,7 +19,7 @@ namespace IDS.Device.Communication
         bool Read(out byte[] data);
         bool ReadAsync(out byte[] data);
         bool Write(byte[] data);
-        bool Send( byte[] data, IdsEndPoint endpoint);
+        bool Send( byte[] data, IdsEndPoint endpoint, Action<IdsSession> action = null);
         bool WriteAsync(byte[] data);
         Task SendAsync(byte[] data, IdsEndPoint endpoint);
     }

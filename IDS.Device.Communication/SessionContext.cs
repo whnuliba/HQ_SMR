@@ -11,7 +11,6 @@ namespace IDS.Device.Communication
     {
         private static readonly Lazy<SessionContext> _instance = new Lazy<SessionContext>(() => new SessionContext());
         private static readonly ConcurrentDictionary<long,IdsSession> _session = new();
-
         private Timer _timer;
         public static SessionContext Instance => _instance.Value;
 
@@ -30,7 +29,7 @@ namespace IDS.Device.Communication
                 }
             }
         }
-        public IdsSession CreadeSession(long sessionId,IServerConnection connection,byte[] reqData)
+        public IdsSession CreateSession(long sessionId,IServerConnection connection,byte[] reqData)
         {
             IdsSession session = IdsSession.CreateSession(sessionId,connection, reqData);
             _session.AddOrUpdate(sessionId, session,(k,ov)=> session);

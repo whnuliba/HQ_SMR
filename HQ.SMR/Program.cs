@@ -71,7 +71,7 @@ public partial class Program
             new AppInitializationService(sp, sp.GetRequiredService<ILogger<AppInitializationService>>()));
 
         #region  开启UDP监听
-        ushort smrSocketPort = 9999;
+        ushort smrSocketPort = 8901;
         if (ushort.TryParse(configuration.GetSection("HQ_SMR:SocketConnection:Port").Value, out ushort port)) {
             smrSocketPort = port;
         }

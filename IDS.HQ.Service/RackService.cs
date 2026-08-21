@@ -1,4 +1,5 @@
 ﻿using IDS.Base;
+using IDS.Common;
 using IDS.Extension;
 using IDS.HQ.Module;
 using IDS.HQ.Service.IService;
@@ -19,6 +20,14 @@ namespace IDS.HQ.Service
         public override RackDbContext DbContext()
         {
             return DbContextFactory.CreateDbContext();
+        }
+
+        public IdsResult<List<Rack>> GetAllRackNode()
+        {
+            using (var ctx = DbContext()) {
+                var racks = ctx.Rack.ToList();
+                return IdsResult<List<Rack>>.ok(racks);
+            }
         }
 
         public override Page<Rack> List(Page<Rack> page, Expression<Func<Rack, bool>> predicate)

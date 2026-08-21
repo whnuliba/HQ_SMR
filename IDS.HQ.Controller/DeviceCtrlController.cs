@@ -26,7 +26,10 @@ namespace IDS.HQ.Controller
                 return ResponseEntity<object>.Error("请传入合法参数");
             //SmartMaterialRackNode
             byte[]message = DeviceMessage.GetTestModeMessage(data.data.Mode);
-            SmartMaterialRackNode.Instance.NoticeRack(data.data.RackNo, message);
+            IdsResult<object> res;
+            SmartMaterialRackNode.Instance.NoticeRack(data.data.RackNo, message, session => {
+                res = session.HandlerResult;
+            });
             return ResponseEntity<object>.Success("ok");
         }
         /// <summary>

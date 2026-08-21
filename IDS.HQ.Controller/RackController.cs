@@ -1,4 +1,5 @@
-﻿using IDS.HQ.Module;
+﻿using IDS.Base;
+using IDS.HQ.Module;
 using IDS.HQ.Service.Adapter;
 using IDS.Ioc;
 using IDS.Persistence;
@@ -20,6 +21,12 @@ namespace IDS.HQ.Controller
         public override DbBaseAdapter<Rack> Adapter()
         {
             return _adapter;
+        }
+        [HttpPost]
+        [Route("all-racknodes")]
+        public ResponseEntity<List<Rack>> GetAllRackNode() { 
+           var res = _adapter.GetAllRackNode();
+            return ResponseEntity<List<Rack>>.Success(res.Data);
         }
     }
 }

@@ -1,4 +1,5 @@
-﻿using IDS.HQ.Module;
+﻿using IDS.Common;
+using IDS.HQ.Module;
 using IDS.HQ.Service.IService;
 using IDS.Ioc;
 using IDS.Persistence;
@@ -15,6 +16,9 @@ namespace IDS.HQ.Service.Adapter
         public override IDbBaseService<Rack> Service()
         {
             return _service;
+        }
+        public IdsResult<List<Rack>> GetAllRackNode() { 
+          return _service.GetAllRackNode();
         }
     }
 }

@@ -101,7 +101,7 @@ namespace IDS.Device.Communication
         {
             throw new NotImplementedException();
         }
-        public virtual bool Send(byte[] data, IdsEndPoint endpoint) {
+        public virtual bool Send(byte[] data, IdsEndPoint endpoint,Action<IdsSession> action =null) {
            return _listener.Send(data, data.Length);
         }
 

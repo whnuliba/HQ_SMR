@@ -22,7 +22,7 @@ namespace IDS.HQ.HYDevice.Protocol
 
         public static byte[] GetTestModeMessage(byte mode)
         {
-            return GetMessage(16, 25, new byte[] { mode });
+            return GetMessage(16, 27, new byte[] { mode });
         }
         /// <summary>
         /// 
