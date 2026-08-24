@@ -15,6 +15,7 @@ using log4net.Repository.Hierarchy;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
 using StackExchange.Redis;
 using System;
 using System.Collections.Generic;
@@ -31,7 +32,7 @@ namespace IDS.Extend.HYDevice.ReceiveHandler
     /// </summary>
     public class HYLocationStatusChangeHandler : MessageHandler
     {
-        private string _checkPutwayKey = "HQ:HY:PUTWAY:CHECK:"; //料架号
+        //private string _checkPutwayKey = "HQ:HY:PUTWAY:CHECK:"; //料架号
         private string _checkOutboundKey = "HQ:HY:OUTBOUND:TASK:"; //下架任务号
        // private string _checkOutboundAddrKey = "HQ:HY:OUTBOUND:TASK:ADDR:"; //下架储位号
         //public  ILogger<HYLocationStatusChangeHandler> Logger = (ILogger<HYLocationStatusChangeHandler>)ContainerUtils.AutofacServiceProvider.GetService(typeof(Logger));
@@ -68,20 +69,20 @@ namespace IDS.Extend.HYDevice.ReceiveHandler
         {
 
             IdsRedis RedisClient = ContainerUtils.AutofacServiceProvider.GetRequiredService<IdsRedis>();
-            var taskId = RedisClient.GetDatabase().StringGet(_checkPutwayKey+ rackNode.No+":"+rackNode.RackSide);
-            if (string.IsNullOrEmpty(taskId))
+            var taskIdStr = RedisClient.GetDatabase().StringGet(HYConstant.CheckPutwayKey + rackNode.No+":"+rackNode.RackSide);
+            if (string.IsNullOrEmpty(taskIdStr))
             {
                 return IdsResult<object>.failure($"设备{rackNode.No}没有等待上架的任务,非法按下");
             }
-
+            RackLocationTaskDto locationTaskDto = JsonConvert.DeserializeObject<RackLocationTaskDto>(taskIdStr);
             IDbContextFactory<RackDbContext> dbContext = ContainerUtils.AutofacServiceProvider.GetRequiredService<IDbContextFactory<RackDbContext>>();
             using (var ctx = dbContext.CreateDbContext())
             {
 
-                var uptasktask = ctx.Query<RackTask>(f => f.Id == taskId && f.TaskState == (int)TaskStates.UP_WAIT).FirstOrDefault();
+                var uptasktask = ctx.Query<RackTask>(f => f.Id == locationTaskDto.TaskId && f.TaskState == (int)TaskStates.UP_WAIT).FirstOrDefault();
                 if (uptasktask == null)
                 {
-                    return IdsResult<object>.failure($"设备{rackNode.No}没有等待上架的任务{taskId}，基于设备特性，每台料架智能有有个上架任务");
+                    return IdsResult<object>.failure($"设备{rackNode.No}没有等待上架的任务{locationTaskDto.TaskId}，基于设备特性，每台料架智能有有个上架任务");
                 }
                 //判断当前货架是否出去载货状态
                 var rackinfoload = ctx.Query<RackInfo>(f => f.RackNo == rackNode.No && f.Location == locationInfo.Addr && f.Loading == (int)LocationStates.FREE).FirstOrDefault();
@@ -99,7 +100,7 @@ namespace IDS.Extend.HYDevice.ReceiveHandler
                     return IdsResult<object>.failure($"设备{rackNode.No}当前存在多个等待上架的任务，基于设备特性，每台料架智能有有个上架任务");
                 }
             }
-            return IdsResult<object>.ok(taskId);
+            return IdsResult<object>.ok(locationTaskDto);
         }
         public IdsResult<object> ExecutePutway(RackNode rackNode, LocationInfo locationInfo)
         {
@@ -109,16 +110,23 @@ namespace IDS.Extend.HYDevice.ReceiveHandler
 
             var checkStateRes = CheckUpTaskState(rackNode, locationInfo);
             if (!checkStateRes.Success) return checkStateRes;
-            var taskId_ = checkStateRes.Data?.ToString();
+            var taskId_ = checkStateRes.Data as RackLocationTaskDto;
             if (taskId_==null) {
-                taskId_ = RedisClient.GetDatabase().StringGet(_checkPutwayKey+ rackNode.No);
+                string rackTaskStr  = RedisClient.GetDatabase().StringGet(HYConstant.CheckPutwayKey + rackNode.No);
+                taskId_ = JsonConvert.DeserializeObject<RackLocationTaskDto>(rackTaskStr);
             }
-            if (!long.TryParse(taskId_, out long taskId)) {
-                return IdsResult<object>.failure($"设备{rackNode.No}没有等待上架的任务{taskId}，基于设备特性，每台料架智能有有个上架任务");
+            if (taskId_ == null) {
+                return IdsResult<object>.failure($"设备{rackNode.No}没有等待上架的任务，基于设备特性，每台料架智能有有个上架任务");
+            }
+            string taskId = taskId_.TaskId;
+            //判断储位是否可以上架
+            int addr = locationInfo.Addr;
+            if (!taskId_.Locations.Contains(addr)) {
+                return IdsResult<object>.failure($"设备{rackNode.No}等待上架的任务{taskId}，储位号{addr}，当前任务不允许该储位号上架，可能是下架任务报文丢失人工多次触发，请检查");
             }
             using (var ctx = dbContext.CreateDbContext())
             {
-                var uptasktask = ctx.Query<RackTask>(f => f.Id == taskId_ && f.TaskState == (int)TaskStates.UP_WAIT).FirstOrDefault();
+                var uptasktask = ctx.Query<RackTask>(f => f.Id == taskId && f.TaskState == (int)TaskStates.UP_WAIT).FirstOrDefault();
                 if (uptasktask == null)
                 {
                     return IdsResult<object>.failure($"设备{rackNode.No}没有等待上架的任务{taskId}，基于设备特性，每台料架智能有有个上架任务");
@@ -151,7 +159,7 @@ namespace IDS.Extend.HYDevice.ReceiveHandler
                         return IdsResult<object>.failure($"货架{rackNode.No}:储位{locationInfo.Addr} 任务状态变更失败，请检查");
                     }
                     //清除Redis上的任务
-                    RedisClient.GetDatabase().KeyDelete(_checkPutwayKey + rackNode.No + ":" + rackNode.RackSide);
+                    RedisClient.GetDatabase().KeyDelete(HYConstant.CheckPutwayKey + rackNode.No + ":" + rackNode.RackSide);
                     ts.Complete();
                 }
             }

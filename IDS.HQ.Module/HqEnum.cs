@@ -24,8 +24,8 @@ namespace IDS.HQ.Module
         LOADING = 1, 
     }
     public enum Light { 
-      R =0,
-      G = 1,
-      B = 2,
+      R =1,
+      G = 2,
+      B = 3,
     }
 }

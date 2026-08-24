@@ -3,18 +3,22 @@ using IDS.Base;
 using IDS.Common;
 using IDS.Common.Utils;
 using IDS.Extend.HYDevice;
+using IDS.Extend.HYDevice.DTO;
+using IDS.Extend.HYDevice.ReceiveHandler;
 using IDS.Extension;
 using IDS.HQ.Module;
 using IDS.Ioc;
 using IDS.Persistence;
 using LinqToDB.Data;
 using LinqToDB.EntityFrameworkCore;
+using log4net;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.Extensions.DependencyInjection;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using StackExchange.Redis;
 using System.Linq.Expressions;
@@ -28,9 +32,8 @@ namespace IDS.HQ.Service
     {
         public object obj_lock = new object();
         public object obj_lock_out = new object();
-
+        public ILog Logger = LogManager.GetLogger(typeof(RackTaskService));
         public IdsRedis RedisClient { get; set; }
-        private string _checkPutwayKey = "HQ:HY:PUTWAY:CHECK:"; //料架号
         private string _checkOutboundKey = "HQ:HY:OUTBOUND:TASK:"; //料架号
         private string _checkOutboundAddrKey = "HQ:HY:OUTBOUND:TASK:ADDR:"; //料架号
         public  IDbContextFactory<RackDbContext> DbContextFactory { get; set; }
@@ -53,7 +56,7 @@ namespace IDS.HQ.Service
                 return IdsResult<RackTask>.failure($"货架{rackTask.RackNo}:面号{rackTask.RackSide} 不是A或B");
             }
             lock (obj_lock) {
-                string token = RedisClient.GetDatabase().StringGet(_checkPutwayKey + rackTask.RackNo+":"+rackTask.RackSide);
+                string token = RedisClient.GetDatabase().StringGet(HYConstant.CheckPutwayKey + rackTask.RackNo+":"+rackTask.RackSide);
                 if (!string.IsNullOrWhiteSpace(token)) {
                     return IdsResult<RackTask>.failure($"01:当前该货架{rackTask.RackNo}有正在上架但未绑定的任务,任务token:{token}");
                 }
@@ -83,7 +86,16 @@ namespace IDS.HQ.Service
                             //先亮绿灯吧？后续按照需求规格来设置颜色
                             Dictionary<int, byte> dic = allowLight.ToDictionary(k => k??0, v => (byte)Light.G);
                             SmartMaterialRackNode.Instance.NoticeRackMultiLightOn(rackTask.RackNo, dic);
-                            RedisClient.GetDatabase().StringSet(_checkPutwayKey + rackTask.RackNo + ":" + rackTask.RackSide, id + "");
+                            //主要用于判断当前任务允许的邓伟
+                            var locTask = new RackLocationTaskDto
+                            {
+                                TaskId = id + "",
+                                Locations = allowLight.ToList()
+                            };
+                            string locTaskStr = JsonConvert.SerializeObject(locTask);
+                            Logger.Info(string.Format("创建任务完成{0},{1}", HYConstant.CheckPutwayKey + rackTask.RackNo + ":" + rackTask.RackSide, locTaskStr));
+                            RedisClient.GetDatabase().StringSet(HYConstant.CheckPutwayKey + rackTask.RackNo + ":" + rackTask.RackSide, locTaskStr);
+                           // SmartMaterialRackNode.Instance.AddAllowPutwayAddr(id+"", allowLight.ToList());
                             ts.Complete();
                         }
                         catch (Exception ex) { 
@@ -388,10 +400,10 @@ namespace IDS.HQ.Service
                     }
                 }
               
-                string token = RedisClient.GetDatabase().StringGet(_checkPutwayKey + rackTask.RackNo + ":" + rackTask.RackSide);
+                string token = RedisClient.GetDatabase().StringGet(HYConstant.CheckPutwayKey + rackTask.RackNo + ":" + rackTask.RackSide);
                 if (!string.IsNullOrWhiteSpace(token))
                 {
-                    RedisClient.GetDatabase().KeyDelete(_checkPutwayKey + rackTask.RackNo + ":" + rackTask.RackSide);
+                    RedisClient.GetDatabase().KeyDelete(HYConstant.CheckPutwayKey + rackTask.RackNo + ":" + rackTask.RackSide);
                 }
 
                 //已经点亮的灯需要熄灭
@@ -593,7 +605,7 @@ namespace IDS.HQ.Service
                         ctx.Entry(rackinfo).Property(p => p.PPID).IsModified = true;
                         ctx.SaveChanges();
                     }
-                    RedisClient.GetDatabase().KeyDelete(_checkPutwayKey + rackTask.RackNo + ":" + rackTask.RackSide);
+                    RedisClient.GetDatabase().KeyDelete(HYConstant.CheckPutwayKey + rackTask.RackNo + ":" + rackTask.RackSide);
                     ts.Complete();
                 }
 

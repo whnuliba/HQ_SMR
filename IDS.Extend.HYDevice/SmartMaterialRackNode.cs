@@ -2,9 +2,12 @@
 using IDS.HQ.HYDevice.Protocol;
 using IDS.HQ.Module;
 using IDS.Ioc;
+using IDS.Persistence;
 using LinqToDB.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Newtonsoft.Json;
+using StackExchange.Redis;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -19,9 +22,31 @@ namespace IDS.Extend.HYDevice
         private static readonly Lazy<SmartMaterialRackNode> _instance = new Lazy<SmartMaterialRackNode>(() => new SmartMaterialRackNode());
         private readonly static ConcurrentDictionary<string, RackNode> _rackNodeWithIp = new ConcurrentDictionary<string, RackNode>();
         private readonly static ConcurrentDictionary<string, RackNode> _rackNodeWithNo = new ConcurrentDictionary<string, RackNode>();
-
+        //允许正在上架的任务
+        private readonly static List<int> _allowPutwayList = new();
         public static SmartMaterialRackNode Instance => _instance.Value;
         private SmartMaterialRackNode() { }
+        public bool AddAllowPutwayAddr(string taskId ,List<int?> addrs ) {
+            IdsRedis redisClient = ContainerUtils.AutofacServiceProvider.GetRequiredService<IdsRedis>();
+            //保存任务
+           return redisClient.GetDatabase().StringSet(HYConstant.AllowPutwayaDDRKey+ taskId, JsonConvert.SerializeObject(addrs),TimeSpan.FromMinutes(60));
+        }
+        public bool RemoveAllowPutwayAddr(string taskId) {
+            IdsRedis redisClient = ContainerUtils.AutofacServiceProvider.GetRequiredService<IdsRedis>();
+            return redisClient.GetDatabase().KeyDelete(HYConstant.AllowPutwayaDDRKey + taskId);
+        }
+        public bool IsAllowPutwayAddr(string taskId,int addr) {
+            IdsRedis redisClient = ContainerUtils.AutofacServiceProvider.GetRequiredService<IdsRedis>();
+            RedisValue addrValue = redisClient.GetDatabase().StringGet(taskId);
+            if (!addrValue.HasValue) {
+                return false;
+            }
+            List<int> addrs = JsonConvert.DeserializeObject<List<int>>(addrValue);
+            if (addrs.Contains(addr)) {
+                return true;
+            }
+            return false;
+        }
         public RackNode AddNode(RackNode rackNode) {
             _rackNodeWithIp.AddOrUpdate(rackNode.IP, rackNode, (k, ov) => rackNode);
             _rackNodeWithNo.AddOrUpdate(rackNode.No, rackNode, (k, ov) => rackNode);

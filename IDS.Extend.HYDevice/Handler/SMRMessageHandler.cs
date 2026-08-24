@@ -72,9 +72,12 @@ namespace IDS.Extend.HYDevice.Handler
                  Extend= rack,
                 };
               var res =  hander?.Handle(dataArray, session,command);
-                if (isRequest) { 
+                if (isRequest) {
                     //处理完成，有问必有答
-                  session.taskCompletionSource.SetResult(res);
+                    if (!session.taskCompletionSource.Task.IsCanceled &&!session.taskCompletionSource.Task.IsCompleted)
+                    {
+                        session.taskCompletionSource.SetResult(res);
+                    }
                 }
             }
             return IdsResult<E>.ok();

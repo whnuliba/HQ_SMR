@@ -16,7 +16,7 @@ namespace IDS.Device.Communication
 
         private SessionContext() {
             //启动一个线程去清楚超时的Session
-            _timer =new Timer(CleanSession, null, 2000, 2000);
+            _timer =new Timer(CleanSession, null, 6000, 30000);
         }
         private static void CleanSession(object state)
         {
