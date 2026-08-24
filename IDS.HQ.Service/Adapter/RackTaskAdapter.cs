@@ -1,5 +1,6 @@
 ﻿using IDS.Common;
 using IDS.HQ.Module;
+using IDS.HQ.Module.DTO;
 using IDS.Ioc;
 using IDS.Persistence;
 using System;
@@ -17,7 +18,7 @@ namespace IDS.HQ.Service.Adapter
             return _service;
         }
 
-        public IdsResult<RackTask> Putway(RackTask rackTask) {
+        public IdsResult<RackTask> Putway(WmsPuywayRequest rackTask) {
             return _service.Putway(rackTask);
         }
         public IdsResult<RackTask> Outbound(RackTask rackTask) {

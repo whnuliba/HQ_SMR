@@ -7,6 +7,7 @@ using IDS.Extend.HYDevice.DTO;
 using IDS.Extend.HYDevice.ReceiveHandler;
 using IDS.Extension;
 using IDS.HQ.Module;
+using IDS.HQ.Module.DTO;
 using IDS.Ioc;
 using IDS.Persistence;
 using LinqToDB.Data;
@@ -22,6 +23,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using StackExchange.Redis;
 using System.Linq.Expressions;
+using System.Text;
 using System.Transactions;
 using ZstdSharp.Unsafe;
 
@@ -41,8 +43,18 @@ namespace IDS.HQ.Service
         {
             return DbContextFactory.CreateDbContext();
         }
-        public IdsResult<RackTask> Putway(RackTask rackTask)
+        public IdsResult<RackTask> Putway(WmsPuywayRequest wmsdata)
         {
+            //初始化本地任务
+            var rackTask = new RackTask
+            {
+                RackNo = wmsdata.RackId,
+                RackSide = wmsdata.RackSide,
+                PPID = wmsdata.PPID,
+                AfterLightColor = wmsdata.LightColor,
+                TaskCmd = wmsdata.RackCmd,
+                ExtendId = wmsdata.SessionId
+            };
             //做两个操作，1是确认当前是否已经完成绑定
             if (rackTask == null || string.IsNullOrWhiteSpace(rackTask.RackNo)) {
                 return IdsResult<RackTask>.failure("上传的货架信息为空，或者货架号为空");
@@ -50,6 +62,10 @@ namespace IDS.HQ.Service
             if (string.IsNullOrEmpty(rackTask.RackSide))
             {
                 return IdsResult<RackTask>.failure($"上传的货架{rackTask.RackNo}信息面号为空");
+            }
+            if (string.IsNullOrEmpty(rackTask.PPID))
+            {
+                return IdsResult<RackTask>.failure($"上传的货架{rackTask.RackNo}的物料PPID不能为空");
             }
             if (!string.IsNullOrEmpty(rackTask.RackSide) && "A,B".IndexOf(rackTask.RackSide) < 0) {
 
@@ -63,11 +79,21 @@ namespace IDS.HQ.Service
                 using (var ctx = DbContext()) {
                     long id = IdUtils.Id;
                     rackTask.Id = id+"";
+                    //检查是否有相同的PPID
+                    var ppidTaskCount = ctx.Count<RackTask>(c => c.PPID == rackTask.PPID);
+                    if (ppidTaskCount > 0) {
+                        return IdsResult<RackTask>.failure($"系统中存在多个相同的PPID:{rackTask.PPID}");
+                    }
                     //检查是否还有未完成的任务
                     var task = ctx.RackTask.Where(f => f.RackNo == rackTask.RackNo && f.RackSide == rackTask.RackSide && f.TaskState == (int)TaskStates.UP_WAIT).FirstOrDefault();
                     if (task != null) {
                         return IdsResult<RackTask>.failure($"02:当前该货架{rackTask.RackNo}有正在上架但未绑定的任务,任务token:{task.Id},但缓存已经完成，可能是人为调整数据库导致，请确认，并在系统上完成异常处理");
                     }
+                    var materialInfo = new MaterialInfo();
+                    ObjectExtensions.CopyProperties(wmsdata, materialInfo);
+                    materialInfo.saveInit();
+                    materialInfo.Id = IdUtils.Id + "";
+                    materialInfo.TaskId = rackTask.Id;
                     using (var ts = new TransactionScope())
                     {
                         try
@@ -75,7 +101,15 @@ namespace IDS.HQ.Service
                             rackTask.TaskState = (int)TaskStates.UP_WAIT;
                             rackTask.TaskType = (int)TaskTypes.IN;
                             rackTask.saveInit();
-                            ctx.Insert(rackTask);
+                            int i = ctx.Insert(rackTask);
+                            if (i == 0) { 
+                               return IdsResult<RackTask>.failure($"保存上架任务失败,货架{rackTask.RackNo},面{rackTask.RackSide}");
+                            }
+                            i = ctx.Insert(materialInfo);
+                            if (i == 0)
+                            {
+                                return IdsResult<RackTask>.failure($"保存上架任务失败,货架{rackTask.RackNo},面{rackTask.RackSide}");
+                            }
                             //处理亮灯问题。
                             //检查当前位置信息是空的货架
                             var allowLight = from light in ctx.RackInfo
@@ -83,14 +117,15 @@ namespace IDS.HQ.Service
                                              && light.RackSide == rackTask.RackSide
                                              && light.Loading == (int)LocationStates.FREE
                                              select light.Location;
-                            //先亮绿灯吧？后续按照需求规格来设置颜色
-                            Dictionary<int, byte> dic = allowLight.ToDictionary(k => k??0, v => (byte)Light.G);
+                            //先亮绿灯吧？后续按照需求规格来设置颜色;
+                            Dictionary<int, byte> dic = allowLight.ToDictionary(k => k??0, v => rackTask.AfterLightColor==null ? (byte)LightColor.LightWhite: (byte)rackTask.AfterLightColor);
                             SmartMaterialRackNode.Instance.NoticeRackMultiLightOn(rackTask.RackNo, dic);
                             //主要用于判断当前任务允许的邓伟
                             var locTask = new RackLocationTaskDto
                             {
                                 TaskId = id + "",
-                                Locations = allowLight.ToList()
+                                Locations = allowLight.ToList(),
+                                AfterLightColor = rackTask.AfterLightColor == null ? (byte)LightColor.LightWhite : (byte)rackTask.AfterLightColor
                             };
                             string locTaskStr = JsonConvert.SerializeObject(locTask);
                             Logger.Info(string.Format("创建任务完成{0},{1}", HYConstant.CheckPutwayKey + rackTask.RackNo + ":" + rackTask.RackSide, locTaskStr));
@@ -102,19 +137,18 @@ namespace IDS.HQ.Service
                           return IdsResult<RackTask>.failure(ex.Message);
                         }
                     }
-
-
                 }
-
                 //处理任务创建
                 return IdsResult<RackTask>.ok(rackTask);
             }
         }
-
+        /// <summary>
+        /// 需要注意，过滤掉不能出库的储位。正常能出库的储位正常出即可
+        /// </summary>
+        /// <param name="rackTask"></param>
+        /// <returns></returns>
         public IdsResult<RackTask> Outbound(RackTask rackTask)
         {
-            //处理出库需要检查
-
             //做两个操作，1是确认当前是否已经完成绑定
             if (rackTask == null || string.IsNullOrWhiteSpace(rackTask.RackNo))
             {
@@ -124,6 +158,7 @@ namespace IDS.HQ.Service
             {
                 return IdsResult<RackTask>.failure($"没有下发需要下架的储位号,货架:{rackTask.RackNo}");
             }
+            var message = new StringBuilder();
             lock (obj_lock_out)
             {
                 rackTask.Id = IdUtils.Id+"";
@@ -142,7 +177,7 @@ namespace IDS.HQ.Service
                 {
                     return IdsResult<RackTask>.failure($"没有下发需要下架的储位号,货架:{rackTask.RackNo}");
                 }
-                List<int> light = new List<int>();
+                List<int?> light = new List<int?>();
                 //判断储位号是否在当前的缓存中 同时判断储位号是否已经下发过出库做了
                 HashEntry[] hashFields = new HashEntry[stockAddress.Length];
                 for (int i = 0; i < stockAddress.Length; i++)
@@ -150,15 +185,38 @@ namespace IDS.HQ.Service
                     var item = stockAddress[i];
                     if (!int.TryParse(item, out int _addr) || addrCaches.Contains(_addr))
                     {
-                        return IdsResult<RackTask>.failure($"该储位有正在执行的任务，也有可能下发的储位号不是整数类型,货架:{rackTask.RackNo}:{item}");
+
+                        message.Append($"{rackTask.RackNo}_{item}:该储位有正在执行的任务，也有可能下发的储位号不是整数类型").Append(";");
+                        // return IdsResult<RackTask>.failure($"该储位有正在执行的任务，也有可能下发的储位号不是整数类型,货架:{rackTask.RackNo}:{item}");
+                        continue;
                     }
                     light.Add(_addr);
                     hashFields[i] = new HashEntry(item, rackTask.Id);
                 }
 
-
+                List<int> allowDowns = new List<int>();
                 using (var ctx = DbContext())
                 {
+                    //检查储位是否是载货，不是载货返回该储位异常
+                    var rackTaskList = (from ri in ctx.RackInfo
+                                       where ri.RackNo == rackTask.RackNo && light.Contains(ri.Location)
+                                       select ri).ToList();
+                    //再次过滤不满足条件的储位
+                 
+                    foreach (var rack in rackTaskList) {
+                        if (rack.Enable != (int)Enables.Action) {
+                            message.Append($"{rackTask.RackNo}_{rack.Location}:储位被禁用").Append(";");
+                            // return IdsResult<RackTask>.failure($"该储位有正在执行的任务，也有可能下发的储位号不是整数类型,货架:{rackTask.RackNo}:{item}");
+                            continue;
+                        }
+                        if (rack.Loading != (int)LocationStates.LOADING)
+                        {
+                            message.Append($"{rackTask.RackNo}_{rack.Location}:储位不是载货状态").Append(";");
+                            // return IdsResult<RackTask>.failure($"该储位有正在执行的任务，也有可能下发的储位号不是整数类型,货架:{rackTask.RackNo}:{item}");
+                            continue;
+                        }
+                        allowDowns.Add(rack.Location??-1);
+                    }
 
                     using (var ts = new TransactionScope())
                     {
@@ -171,7 +229,7 @@ namespace IDS.HQ.Service
                             //存入到redis
 
                             RedisClient.GetDatabase().HashSet(_checkOutboundKey + rackTask.RackNo, hashFields);
-                            Dictionary<int, byte>? dic = light?.ToDictionary(k => k, v => (byte)Light.R);
+                            Dictionary<int, byte>? dic = allowDowns.ToDictionary(k => k, v => (byte)LightColor.Red);
                             //发送亮灯信息
                             SmartMaterialRackNode.Instance.NoticeRackMultiLightOn(rackTask.RackNo, dic);
                             ts.Complete();
@@ -184,7 +242,9 @@ namespace IDS.HQ.Service
                     }
                 }
                 //处理任务创建
-                return IdsResult<RackTask>.ok(rackTask);
+                var res = IdsResult<RackTask>.ok(rackTask);
+                res.Message = message.ToString();
+                return res;
             }
         }
         [Obsolete]

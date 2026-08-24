@@ -62,7 +62,14 @@ namespace IDS.HQ.Module
                 entity.ToTable("UserInfo");
 
             });
+            
+            modelBuilder.Entity<MaterialInfo>(entity =>
+            {
+                entity.HasKey(e => e.Id).HasName("PRIMARY");
 
+                entity.ToTable("MaterialInfo");
+
+            });
         }
     }
 }

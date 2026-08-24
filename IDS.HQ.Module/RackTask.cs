@@ -15,6 +15,10 @@ namespace IDS.HQ.Module
         public string? MaterialName { get; set; }
         public string? Locations { get; set; }
         public string? RackSide { get; set; }
+        public int? AfterLightColor { get; set; } //任务完成对应的颜色
+        public string? TaskCmd { set; get; } //"Up"=请求上架命令  --"Up_end"=请求上架结束
+        public string? ExtendId { get; set; }
+        public string? TaskGroupId { get; set; }
     }
 
 

@@ -61,7 +61,14 @@ namespace IDS.Extend.HYDevice.ReceiveHandler
             var inductiveShelf = InductiveShelfInfoDto.Parse(data, rack.No, id);
             var rackNode = new RackNode();
             ObjectExtensions.CopyProperties(rack, rackNode);
-            CheckOperation(inductiveShelf, rackNode, session);
+            var res =  CheckOperation(inductiveShelf, rackNode, session);
+            if (!res.Success) {
+                //发送报警信息
+                //计算面号
+                int side = inductiveShelf.Locations?[0].Addr??0;
+                byte[] alarm = DeviceMessage.GetAlarmLight((byte)side, (byte)ALARM.BUZZER,true);
+                connec?.Send(alarm, idsEnd);
+            }
             return IdsResult<object>.ok();
         }
         //处理上架部分，上架的的PPI只能更具redis来做串行化执行
@@ -149,6 +156,7 @@ namespace IDS.Extend.HYDevice.ReceiveHandler
                     uptasktask.TaskState = (int)TaskStates.UP_COMPLETE;
                     uptasktask.Location = locationInfo.Addr;
                     uptasktask.LastModifyTime = DateTime.Now;
+                    uptasktask.TaskCmd= TaskCmds.Up_end.ToString();
                     ctx.RackTask.Attach(uptasktask);
                     ctx.Entry(uptasktask).Property(p => p.LastModifyTime).IsModified = true;
                     ctx.Entry(uptasktask).Property(p => p.TaskState).IsModified = true;

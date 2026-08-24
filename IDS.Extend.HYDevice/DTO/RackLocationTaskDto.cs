@@ -8,5 +8,6 @@ namespace IDS.Extend.HYDevice.DTO
     {
         public string TaskId { get; set; }
         public List<int?> Locations { get; set; }
+        public int? AfterLightColor { get; set; } //任务完成对应的颜色
     }
 }

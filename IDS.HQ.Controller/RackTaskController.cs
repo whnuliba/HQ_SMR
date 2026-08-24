@@ -2,6 +2,7 @@
 using IDS.Base;
 using IDS.Common;
 using IDS.HQ.Module;
+using IDS.HQ.Module.DTO;
 using IDS.HQ.Service;
 using IDS.HQ.Service.Adapter;
 using IDS.Ioc;
@@ -27,8 +28,8 @@ namespace IDS.HQ.Controller
 
         [HttpPost]
         [Route("PutWay")]
-        public ResponseEntity<RackTask> PutWay(RequestData<RackTask> data) {
-            if (!RequestData<RackTask>.isRequest(data))
+        public ResponseEntity<RackTask> PutWay(RequestData<WmsPuywayRequest> data) {
+            if (!RequestData<WmsPuywayRequest>.isRequest(data))
                 return ResponseEntity<RackTask>.Error("上传信息为空");
             IdsResult<RackTask> res = _adapter.Putway(data.data);
             if (res.Success)
