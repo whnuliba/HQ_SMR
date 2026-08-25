@@ -1,10 +1,13 @@
-﻿using IDS.Device.Communication;
+﻿using HPSocket.Sdk;
+using IDS.Device.Communication;
 using IDS.HQ.HYDevice.Protocol;
 using IDS.HQ.Module;
 using IDS.Ioc;
 using IDS.Persistence;
 using LinqToDB.Data;
+using log4net;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json;
 using StackExchange.Redis;
@@ -19,6 +22,7 @@ namespace IDS.Extend.HYDevice
 {
     public class SmartMaterialRackNode
     {
+        public ILog Logger = LogManager.GetLogger(typeof(SmartMaterialRackNode));
         private static readonly Lazy<SmartMaterialRackNode> _instance = new Lazy<SmartMaterialRackNode>(() => new SmartMaterialRackNode());
         private readonly static ConcurrentDictionary<string, RackNode> _rackNodeWithIp = new ConcurrentDictionary<string, RackNode>();
         private readonly static ConcurrentDictionary<string, RackNode> _rackNodeWithNo = new ConcurrentDictionary<string, RackNode>();
@@ -70,6 +74,33 @@ namespace IDS.Extend.HYDevice
                 return node;
             return node;
         }
+
+        public void SendRackAlarm(string rackNo,byte side ,string message, Action<IdsSession>? action = null) {
+            RackNode node = null;
+            if (!_rackNodeWithNo.TryGetValue(rackNo, out node))
+            {
+                return ;
+            }
+            string _side = side == 0 ? "A" : "B";
+            Logger.Warn($"货架{rackNo},面{_side}触发报警{message}");
+            byte[] alarm = DeviceMessage.GetAlarmLight((byte)side, (byte)ALARM.BUZZER, true);
+            IdsEndPoint idsEnd =  new IdsEndPoint(node.IP, node.Port);
+            var conn = ServerConnectionHolder.GetDefaultConnection();
+            conn?.Send(alarm, idsEnd, action);
+        }
+
+        public void SendCancelRackAlarm(string rackNo, byte side,Action<IdsSession>? action = null)
+        {
+            RackNode node = null;
+            if (!_rackNodeWithNo.TryGetValue(rackNo, out node))
+            {
+                return;
+            }
+            byte[] message = DeviceMessage.GetBigLightOnBuzzerMessage(side, (int)LightColor.Green, false); IdsEndPoint idsEnd = new IdsEndPoint(node.IP, node.Port);
+            var conn = ServerConnectionHolder.GetDefaultConnection();
+            conn?.Send(message, idsEnd, action);
+        }
+
         public void NoticeRackMultiLightOn(string rackNo, Dictionary<int, byte> OnLight, Action<IdsSession>? action = null) {
 
             if (OnLight != null && OnLight.Count > 0)

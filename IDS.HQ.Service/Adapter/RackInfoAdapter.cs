@@ -20,5 +20,9 @@ namespace IDS.HQ.Service.Adapter
         public IdsResult<object> RegisterRackInfo(RegisterRackInfoDto rackInfo) { 
            return _service.RegisterRackInfo(rackInfo);
         }
+
+        public List<RackInfo> GetRackStatus(string rackNo) {
+            return _service.GetRackStatus(rackNo);
+        }
     }
 }

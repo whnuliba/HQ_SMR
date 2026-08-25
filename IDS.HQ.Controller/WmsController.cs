@@ -20,7 +20,8 @@ namespace IDS.HQ.Controller
     [ApiController]
     public class WmsController
     {
-        public RackTaskAdapter rackTaskAdapter { get; set; }    
+        public RackTaskAdapter rackTaskAdapter { get; set; }
+        public RackInfoAdapter rackInfoAdapter { get; set; }
         [HttpPost]
         [Route("UpRackCMD")]
         public WmsResponse UpRackCMD(WmsPuywayRequest wmsPuyway) {
@@ -87,6 +88,41 @@ namespace IDS.HQ.Controller
             return wmsResponse;
         }
 
+        [HttpPost]
+        [Route("GetShelfStatus")]
+        public RackInfoResponse GetRackStatus(RackInfoRequest request) {
+            int code = 0;
+            string message = string.Empty;
+            if (request == null && string.IsNullOrEmpty(request.RackId)) {
+                code = 1;
+                message = "上传的参数信息为空";
+            }
+            var res = rackInfoAdapter.GetRackStatus(request.RackId);
+            if (res == null || res.Count == 0) {
+                code = 1;
+                message = $"料架系统中对该货架{request.RackId}查无记录";
+            }
+            var cellList =res.Select(f =>
+            {
+                return new CellInfo
+                {
+                    CellId = f.Location,
+                    Side = f.RackSide,
+                    Status = f.Loading,
+                    Ppid = f.PPID
+                };
+            }).ToList();
+
+            var resp = new RackInfoResponse { 
+              Code = code,
+              Message = message,
+              CellList = cellList,
+              Timestamp = DateTime.UtcNow.ToString(),
+              SessionId = request.SessionId,
+              RackId = request.RackId
+            };
+            return resp;
+        }
 
         [HttpPost]
         [Route("CancelAlarm")]
@@ -102,10 +138,8 @@ namespace IDS.HQ.Controller
                 response.Message = ["上传参数不能为空"];
 
             }
-
             byte shelfSide = data.RackSide == "A" ? (byte)0 : (byte)1;
-            byte[] message = DeviceMessage.GetBigLightOnBuzzerMessage(shelfSide, (int)LightColor.Green, false);
-            SmartMaterialRackNode.Instance.NoticeRack(data.RackId, message, (session) => { 
+            SmartMaterialRackNode.Instance.SendCancelRackAlarm(data.RackId, shelfSide, (session) => { 
                var res = session.HandlerResult;
                 if (res.Success)
                 {

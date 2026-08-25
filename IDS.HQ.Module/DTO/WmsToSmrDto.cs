@@ -375,4 +375,157 @@ namespace IDS.HQ.Module.DTO
         [JsonPropertyName("APIResData")]
         public T ApiResData { get; set; }
     }
+
+
+    /// <summary>
+    /// 货架信息查询请求
+    /// </summary>
+    public class RackInfoRequest
+    {
+        /// <summary>
+        /// 货架ID
+        /// </summary>
+        [JsonPropertyName("RackId")]
+        public string RackId { get; set; }
+
+        /// <summary>
+        /// 用户ID
+        /// </summary>
+        [JsonPropertyName("UserId")]
+        public string UserId { get; set; }
+
+        /// <summary>
+        /// 时间戳
+        /// </summary>
+        [JsonPropertyName("Timestamp")]
+        public DateTime Timestamp { get; set; }
+
+        /// <summary>
+        /// 会话ID
+        /// </summary>
+        [JsonPropertyName("SessionId")]
+        public string SessionId { get; set; }
+    }
+
+    /// <summary>
+    /// 储位信息
+    /// </summary>
+    public class CellInfo
+    {
+        /// <summary>
+        /// 储位号
+        /// </summary>
+        [JsonPropertyName("cellId")]
+        public int? CellId { get; set; }
+
+        /// <summary>
+        /// 储位状态：0-没料（PPID可放空），1-有料（PPID要放值）
+        /// </summary>
+        [JsonPropertyName("status")]
+        public int? Status { get; set; }
+
+        /// <summary>
+        /// 面别：A/B
+        /// </summary>
+        [JsonPropertyName("side")]
+        public string? Side { get; set; }
+
+        /// <summary>
+        /// PPID信息
+        /// </summary>
+        [JsonPropertyName("ppid")]
+        public string? Ppid { get; set; }
+
+        /// <summary>
+        /// 是否有料
+        /// </summary>
+        [JsonIgnore]
+        public bool HasMaterial => Status == 1;
+
+        /// <summary>
+        /// 是否为空位
+        /// </summary>
+        [JsonIgnore]
+        public bool IsEmpty => Status == 0;
+    }
+
+    /// <summary>
+    /// 货架信息查询响应
+    /// </summary>
+    public class RackInfoResponse
+    {
+        /// <summary>
+        /// 状态码：0-成功，-1-异常
+        /// </summary>
+        [JsonPropertyName("code")]
+        public int Code { get; set; }
+
+        /// <summary>
+        /// 货架ID
+        /// </summary>
+        [JsonPropertyName("rackId")]
+        public string RackId { get; set; }
+
+        /// <summary>
+        /// 储位列表
+        /// </summary>
+        [JsonPropertyName("celllist")]
+        public List<CellInfo> CellList { get; set; }
+
+        /// <summary>
+        /// 消息描述
+        /// </summary>
+        [JsonPropertyName("message")]
+        public string Message { get; set; }
+
+        /// <summary>
+        /// 时间戳
+        /// </summary>
+        [JsonPropertyName("timestamp")]
+        public string Timestamp { get; set; }
+
+        /// <summary>
+        /// 会话ID
+        /// </summary>
+        [JsonPropertyName("sessionId")]
+        public string SessionId { get; set; }
+
+        /// <summary>
+        /// 是否成功
+        /// </summary>
+        [JsonIgnore]
+        public bool IsSuccess => Code == 0;
+
+        /// <summary>
+        /// 获取有料的储位列表
+        /// </summary>
+        [JsonIgnore]
+        public List<CellInfo> OccupiedCells => CellList?.FindAll(x => x.HasMaterial);
+
+        /// <summary>
+        /// 获取空储位列表
+        /// </summary>
+        [JsonIgnore]
+        public List<CellInfo> EmptyCells => CellList?.FindAll(x => x.IsEmpty);
+
+        /// <summary>
+        /// 获取指定面的储位列表
+        /// </summary>
+        public List<CellInfo> GetCellsBySide(string side)
+        {
+            return CellList?.FindAll(x => x.Side?.Equals(side, StringComparison.OrdinalIgnoreCase) == true);
+        }
+
+        /// <summary>
+        /// 获取A面储位
+        /// </summary>
+        [JsonIgnore]
+        public List<CellInfo> SideACells => GetCellsBySide("A");
+
+        /// <summary>
+        /// 获取B面储位
+        /// </summary>
+        [JsonIgnore]
+        public List<CellInfo> SideBCells => GetCellsBySide("B");
+    }
 }

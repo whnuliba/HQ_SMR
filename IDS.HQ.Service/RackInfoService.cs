@@ -216,5 +216,12 @@ namespace IDS.HQ.Service
             }
             return base.List(page, predicate);
         }
+
+        public List<RackInfo> GetRackStatus(string rackNo)
+        {
+            using (var ctx = DbContext()) {
+                return ctx.RackInfo.Where(f => f.RackNo == rackNo).ToList();
+            }
+        }
     }
 }
