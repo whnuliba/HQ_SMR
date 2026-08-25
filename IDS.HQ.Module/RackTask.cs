@@ -19,6 +19,7 @@ namespace IDS.HQ.Module
         public string? TaskCmd { set; get; } //"Up"=请求上架命令  --"Up_end"=请求上架结束
         public string? ExtendId { get; set; }
         public string? TaskGroupId { get; set; }
+        public string? OperateType { set; get; }
     }
 
 

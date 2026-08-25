@@ -1,5 +1,9 @@
-﻿using IDS.Common;
+﻿using IDS.Base;
+using IDS.Common;
 using IDS.Common.Utils;
+using IDS.Extend.HYDevice;
+using IDS.Extend.HYDevice.DTO;
+using IDS.HQ.HYDevice.Protocol;
 using IDS.HQ.Module;
 using IDS.HQ.Module.DTO;
 using IDS.HQ.Service.Adapter;
@@ -7,6 +11,7 @@ using IDS.Ioc;
 using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Collections.Generic;
+using System.Net;
 using System.Text;
 
 namespace IDS.HQ.Controller
@@ -80,6 +85,40 @@ namespace IDS.HQ.Controller
             }
             wmsResponse.Message = message.ToString();
             return wmsResponse;
+        }
+
+
+        [HttpPost]
+        [Route("CancelAlarm")]
+        public WmsCancelAlarmResponse AlarmLightDown(WmsCancelAlarm data)
+        {
+            var response = new WmsCancelAlarmResponse();
+            response.Code = 0;
+            response.SessionId = data.SessionId;
+            response.Timestamp = data.Timestamp;
+            if (data == null || string.IsNullOrEmpty(data.RackId) || string.IsNullOrEmpty(data.RackSide))
+            {
+                response.Code = 1;
+                response.Message = ["上传参数不能为空"];
+
+            }
+
+            byte shelfSide = data.RackSide == "A" ? (byte)0 : (byte)1;
+            byte[] message = DeviceMessage.GetBigLightOnBuzzerMessage(shelfSide, (int)LightColor.Green, false);
+            SmartMaterialRackNode.Instance.NoticeRack(data.RackId, message, (session) => { 
+               var res = session.HandlerResult;
+                if (res.Success)
+                {
+
+                    response.Code = 0;
+                }
+                else
+                {
+                    response.Code = 1;
+                    response.Message = ["超时未收到设备取消成功的反馈"];
+                }
+            });
+            return response;
         }
     }
 }

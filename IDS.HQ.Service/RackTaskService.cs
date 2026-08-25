@@ -53,7 +53,9 @@ namespace IDS.HQ.Service
                 PPID = wmsdata.PPID,
                 AfterLightColor = wmsdata.LightColor,
                 TaskCmd = wmsdata.RackCmd,
-                ExtendId = wmsdata.SessionId
+                ExtendId = wmsdata.SessionId,
+                OperateType = wmsdata.OperateType
+
             };
             //做两个操作，1是确认当前是否已经完成绑定
             if (rackTask == null || string.IsNullOrWhiteSpace(rackTask.RackNo)) {

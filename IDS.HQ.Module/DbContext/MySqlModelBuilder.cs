@@ -70,6 +70,13 @@ namespace IDS.HQ.Module
                 entity.ToTable("MaterialInfo");
 
             });
+            modelBuilder.Entity<DispatchMessage>(entity =>
+            {
+                entity.HasKey(e => e.Id).HasName("PRIMARY");
+
+                entity.ToTable("DispatchMessage");
+
+            });
         }
     }
 }
