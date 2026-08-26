@@ -33,7 +33,7 @@ namespace IDS.HQ.Module
         /// <summary>
         /// 亮灯色：1-红，2-淡白，3-绿，4-蓝，5-黄绿，6-紫，7-黄，8-浅蓝，9-浅黄
         /// </summary>
-        public byte? LightColor { get; set; }
+        public int? LightColor { get; set; }
 
         /// <summary>
         /// 上架超时时间（秒）

@@ -40,7 +40,7 @@ namespace IDS.HQ.Controller
             wmsResponse.RackId = wmsPuyway.RackId;
             wmsResponse.CellId = "";
             wmsResponse.SessionId = wmsPuyway.SessionId;
-            wmsResponse.Timestamp = wmsPuyway.Timestamp;
+            wmsResponse.Timestamp = wmsPuyway.Timestamp??DateTime.UtcNow;
             if (wmsPuyway == null || string.IsNullOrWhiteSpace(wmsPuyway.RackId))
             {
                 wmsResponse.Code = 1;

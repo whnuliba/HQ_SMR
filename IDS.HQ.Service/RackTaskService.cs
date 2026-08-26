@@ -652,11 +652,11 @@ namespace IDS.HQ.Service
             {
                 if (string.IsNullOrEmpty(rackTask.RackNo) || string.IsNullOrEmpty(rackTask.RackSide) || string.IsNullOrEmpty(rackTask.Id))
                 {
-                    return IdsResult<RackTask>.failure("强制完成任务必须执行货架位置");
+                    return IdsResult<RackTask>.failure("强制完成任务必须货架位置货架位置");
                 }
                 if (rackTask.Location == null)
                 {
-                    return IdsResult<RackTask>.failure("强制完成任务必须执行货架位置");
+                    return IdsResult<RackTask>.failure("强制完成任务必须指定货架位置");
                 }
                 var task = ctx.RackTask.Where(f => f.RackNo == rackTask.RackNo && f.RackSide == rackTask.RackSide && rackTask.TaskState == (int)TaskStates.UP_WAIT).FirstOrDefault();
                 if (task == null && !string.IsNullOrEmpty(rackTask.Id))
