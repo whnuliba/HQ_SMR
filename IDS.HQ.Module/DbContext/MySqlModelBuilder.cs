@@ -68,6 +68,9 @@ namespace IDS.HQ.Module
                 entity.HasKey(e => e.Id).HasName("PRIMARY");
 
                 entity.ToTable("MaterialInfo");
+                entity.Property(e => e.No09)
+                   //.HasMaxLength(30)
+                   .HasColumnName("NO_09");
 
             });
             modelBuilder.Entity<DispatchMessage>(entity =>

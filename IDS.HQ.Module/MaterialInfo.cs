@@ -12,23 +12,23 @@ namespace IDS.HQ.Module
         /// <summary>
         /// 操作类型，用于回调处理数据时区分业务类型
         /// </summary>
-        public string OperateType { get; set; }
+        public string? OperateType { get; set; }
 
         /// <summary>
         /// 料架ID
         /// </summary>
-        public string RackId { get; set; }
+        public string? RackId { get; set; }
 
         /// <summary>
         /// A或者B面
         /// </summary>
-        public string RackSide { get; set; }
+        public string? RackSide { get; set; }
 
         /// <summary>
         /// 任务ID
         /// </summary>
-        [Required]
-        public string TaskId { get; set; }
+        //[Required]
+        public string? TaskId { get; set; }
 
         /// <summary>
         /// 亮灯色：1-红，2-淡白，3-绿，4-蓝，5-黄绿，6-紫，7-黄，8-浅蓝，9-浅黄
@@ -45,71 +45,68 @@ namespace IDS.HQ.Module
         /// </summary>
         //[Column("PPID")]
         //[StringLength(50)]
-        public string PPID { get; set; }
+        public string? PPID { get; set; }
 
         /// <summary>
         /// 产品料号
         /// </summary>
         //[StringLength(100)]
-        public string CompPn { get; set; }
+        public string? CompPn { get; set; }
 
         /// <summary>
         /// 产品物料描述
         /// </summary>
-        public string Description { get; set; }
+        public string? Description { get; set; }
 
         /// <summary>
         /// 产品数量
         /// </summary>
-        public decimal Qty { get; set; }
+        public decimal? Qty { get; set; }
 
         /// <summary>
         /// 客户料号
         /// </summary>
-        [StringLength(100)]
-        public string CustomerPn { get; set; }
+        //[StringLength(100)]
+        public string? CustomerPn { get; set; }
 
         /// <summary>
         /// 供应商名称
         /// </summary>
-        [StringLength(200)]
-        public string VendorCode { get; set; }
+        //[StringLength(200)]
+        public string? VendorCode { get; set; }
 
         /// <summary>
         /// DC（Date Code）
         /// </summary>
-        [StringLength(50)]
-        public string DateCode { get; set; }
+        //[StringLength(50)]
+        public string? DateCode { get; set; }
 
         /// <summary>
         /// LC（Lot Code）
         /// </summary>
-        [StringLength(50)]
-        public string LotCode { get; set; }
+        //[StringLength(50)]
+        public string? LotCode { get; set; }
 
         /// <summary>
         /// 组织
         /// </summary>
-        [StringLength(50)]
-        public string OrgCode { get; set; }
+        public string? OrgCode { get; set; }
 
         /// <summary>
         /// 09码
         /// </summary>
-        [StringLength(100)]
-        public string No09 { get; set; }
+        public string? No09 { get; set; }
 
         /// <summary>
         /// GUPN
         /// </summary>
-        [StringLength(100)]
-        public string Gupn { get; set; }
+       // [StringLength(100)]
+        public string? Gupn { get; set; }
 
         /// <summary>
         /// 用户ID
         /// </summary>
-        [StringLength(100)]
-        public string UserId { get; set; }
+        public string? UserId { get; set; }
 
         /// <summary>
         /// 时间戳
@@ -119,7 +116,6 @@ namespace IDS.HQ.Module
         /// <summary>
         /// 会话ID
         /// </summary>
-        [StringLength(50)]
-        public string SessionId { get; set; }
+        public string? SessionId { get; set; }
     }
 }
