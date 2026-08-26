@@ -1,4 +1,5 @@
 ﻿using IDS.Base;
+using IDS.Base.Utils;
 using IDS.Common;
 using IDS.Common.Utils;
 using IDS.Extend.HYDevice;
@@ -8,11 +9,14 @@ using IDS.HQ.Module;
 using IDS.HQ.Module.DTO;
 using IDS.HQ.Service.Adapter;
 using IDS.Ioc;
+using IDS.Persistence;
+using Microsoft.AspNetCore.JsonPatch.Internal;
 using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Text;
+using static LinqToDB.Common.Configuration;
 
 namespace IDS.HQ.Controller
 {
@@ -22,23 +26,64 @@ namespace IDS.HQ.Controller
     {
         public RackTaskAdapter rackTaskAdapter { get; set; }
         public RackInfoAdapter rackInfoAdapter { get; set; }
+        public IdsRedisLock IdsRedisLock { get; set; }
+
         [HttpPost]
         [Route("UpRackCMD")]
-        public WmsResponse UpRackCMD(WmsPuywayRequest wmsPuyway) {
+        public async Task<WmsResponse> UpRackCMD(WmsPuywayRequest wmsPuyway) {
             //做任务分发，处理上架和上架完成的业务转发
-            IdsResult<RackTask> res = rackTaskAdapter.Putway(wmsPuyway);
+
+
+            string lockStr = "HQ:COMMON:PUTWAY_TASK_LOCK:" + wmsPuyway.RackId;
+            string value = BaseUtil.uuid();
             var wmsResponse = new WmsResponse();
-            wmsResponse.Message = "上架无异常";
-            wmsResponse.Code = 0;
-            if (!res.Success) {
-                wmsResponse.Code = 1;
-                wmsResponse.Message = res.Message;
-            }
             wmsResponse.RackId = wmsPuyway.RackId;
             wmsResponse.CellId = "";
             wmsResponse.SessionId = wmsPuyway.SessionId;
-            wmsResponse.Timestamp = wmsPuyway.Timestamp;        
-            return wmsResponse;   
+            wmsResponse.Timestamp = wmsPuyway.Timestamp;
+            if (wmsPuyway == null || string.IsNullOrWhiteSpace(wmsPuyway.RackId))
+            {
+                wmsResponse.Code = 1;
+                wmsResponse.Message ="上传信息为空";
+                return wmsResponse;
+            }
+            try
+            {
+                if (IdsRedisLock.Lock(lockStr, value, TimeSpan.FromSeconds(60)))
+                {
+                    try
+                    {
+                        IdsResult<RackTask> res = rackTaskAdapter.Putway(wmsPuyway);
+                       
+                        wmsResponse.Message = "上架无异常";
+                        wmsResponse.Code = 0;
+                        if (!res.Success)
+                        {
+                            wmsResponse.Code = 1;
+                            wmsResponse.Message = res.Message;
+                        }
+
+                        return wmsResponse;
+                    }
+                    catch (Exception ex)
+                    {
+                        wmsResponse.Code = 1;
+                        wmsResponse.Message = ex.Message;
+                    }
+                    finally
+                    {
+                        await IdsRedisLock.UnLock(lockStr, value);
+                    }
+
+                }
+            }
+            catch (Exception ex)
+            {
+                wmsResponse.Code = 1;
+                wmsResponse.Message = ex.Message;
+            }
+            return wmsResponse;
+             
         }
         [HttpPost]
         [Route("DownRackCMD")]

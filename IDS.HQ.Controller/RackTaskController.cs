@@ -1,5 +1,6 @@
 ﻿using Autofac.Core;
 using IDS.Base;
+using IDS.Base.Utils;
 using IDS.Common;
 using IDS.HQ.Module;
 using IDS.HQ.Module.DTO;
@@ -19,7 +20,9 @@ namespace IDS.HQ.Controller
     [ApiController]
     public class RackTaskController : DbBaseController<RackTask>
     {
-        public RackTaskAdapter  _adapter { get; set; }
+        public RackTaskAdapter _adapter { get; set; }
+        public IdsRedisLock IdsRedisLock { get; set; }
+
         [ApiExplorerSettings(IgnoreApi = true)]
         public override DbBaseAdapter<RackTask> Adapter()
         {
@@ -28,23 +31,87 @@ namespace IDS.HQ.Controller
 
         [HttpPost]
         [Route("PutWay")]
-        public ResponseEntity<RackTask> PutWay(RequestData<WmsPuywayRequest> data) {
+        public async  Task<ResponseEntity<RackTask>> PutWay(RequestData<WmsPuywayRequest> data) {
             if (!RequestData<WmsPuywayRequest>.isRequest(data))
                 return ResponseEntity<RackTask>.Error("上传信息为空");
-            IdsResult<RackTask> res = _adapter.Putway(data.data);
-            if (res.Success)
-                return ResponseEntity<RackTask>.Success(res.Data);
-            else return ResponseEntity<RackTask>.Error(res.Message);
+
+            if (data.data == null || string.IsNullOrWhiteSpace(data.data.RackId))
+            {
+                return ResponseEntity<RackTask>.Error("上传信息为空");
+            }
+            string lockStr = "HQ:COMMON:PUTWAY_TASK_LOCK:" + data.data.RackId;
+            string value = BaseUtil.uuid();
+            try
+            {
+                if (IdsRedisLock.Lock(lockStr, value, TimeSpan.FromSeconds(60)))
+                {
+                    try
+                    {
+                        IdsResult<RackTask> res = _adapter.Putway(data.data);
+                        if (res.Success)
+                            return ResponseEntity<RackTask>.Success(res.Data);
+                        else return ResponseEntity<RackTask>.Error(res.Message);
+                    }
+                    catch (Exception ex)
+                    {
+                        return ResponseEntity<RackTask>.Error(ex.Message);
+                    }
+                    finally
+                    {
+                       await IdsRedisLock.UnLock(lockStr, value);
+                    }
+
+                }
+            }
+            catch (Exception ex) {
+                return ResponseEntity<RackTask>.Error(ex.Message);
+            }
+            return ResponseEntity<RackTask>.Error("");
         }
         [HttpPost]
         [Route("Outbound")]
-        public ResponseEntity<RackTask> Outbound(RequestData<RackTask> data) {
+        public async Task<ResponseEntity<RackTask>> Outbound(RequestData<RackTask> data) {
             if (!RequestData<RackTask>.isRequest(data))
                 return ResponseEntity<RackTask>.Error("上传信息为空");
-            IdsResult<RackTask> res = _adapter.Outbound(data.data);
-            if (res.Success)
-                return ResponseEntity<RackTask>.Success(res.Data);
-            else return ResponseEntity<RackTask>.Error(res.Message);
+
+
+
+            if (data.data == null || string.IsNullOrWhiteSpace(data.data.RackNo))
+            {
+                return ResponseEntity<RackTask>.Error("上传信息为空");
+            }
+            string lockStr = "HQ:COMMON:OUTBOUND_TASK_LOCK:" + data.data.RackNo;
+            string value = BaseUtil.uuid();
+            try
+            {
+                if (IdsRedisLock.Lock(lockStr, value, TimeSpan.FromSeconds(60)))
+                {
+                    try
+                    {
+                        IdsResult<RackTask> res = _adapter.Outbound(data.data);
+                        if (res.Success)
+                            return ResponseEntity<RackTask>.Success(res.Data);
+                        else return ResponseEntity<RackTask>.Error(res.Message);
+                    }
+                    catch (Exception ex)
+                    {
+                        return ResponseEntity<RackTask>.Error(ex.Message);
+                    }
+                    finally
+                    {
+                        await IdsRedisLock.UnLock(lockStr, value);
+                    }
+
+                }
+            }
+            catch (Exception ex)
+            {
+                return ResponseEntity<RackTask>.Error(ex.Message);
+            }
+            return ResponseEntity<RackTask>.Error("");
+
+
+           
         } 
         [HttpPost]
         [Route("CancelTask")]
