@@ -64,13 +64,15 @@ namespace IDS.Extend.HYDevice.ReceiveHandler
             var rackNode = new RackNode();
             ObjectExtensions.CopyProperties(rack, rackNode);
             var res =  CheckOperation(inductiveShelf, rackNode, session);
-            if (!res.Success) {
-                //发送报警信息
-                //计算面号
-                int side = inductiveShelf.Locations?[0].Addr??0;
-                byte[] alarm = DeviceMessage.GetAlarmLight((byte)side, (byte)ALARM.BUZZER,true);
-                connec?.Send(alarm, idsEnd);
-            }
+            #region 已经在调用方法中发报警了，该处不需要再发送报警
+            //if (!res.Success) {
+            //    //发送报警信息
+            //    //计算面号
+            //    int side = inductiveShelf.Locations?[0].Addr??0;
+            //    byte[] alarm = DeviceMessage.GetAlarmLight((byte)side, (byte)ALARM.BUZZER,true);
+            //    connec?.Send(alarm, idsEnd);
+            //}
+            #endregion
             return IdsResult<object>.ok();
         }
         //处理上架部分，上架的的PPI只能更具redis来做串行化执行
@@ -330,7 +332,7 @@ namespace IDS.Extend.HYDevice.ReceiveHandler
                     ErrorInfo = $"货架:{rackNode.No};IP:{rackNode.IP};面 {sideStr};储位:{upCountList.First().Addr} 非法拿起或按下!"
                 };
                 Logger.Error(alarm.ErrorInfo);
-                SendNotice<RackAlarmInfo>(alarm, session);
+                SendAlarmNotice<RackAlarmInfo>(alarm, session);
             }
 
             if (upCountList.Count == 1) {
@@ -355,7 +357,7 @@ namespace IDS.Extend.HYDevice.ReceiveHandler
                             ErrorInfo = $"{res.Message};货架:{rackNode.No};IP:{rackNode.IP};面 {sideStr};储位:{item.Addr} 非法按下!"
                         };
                         Logger.Error(alarm.ErrorInfo);
-                        SendNotice<RackAlarmInfo>(alarm, session);
+                        SendAlarmNotice<RackAlarmInfo>(alarm, session);
                     }
                 }
             }
@@ -375,13 +377,13 @@ namespace IDS.Extend.HYDevice.ReceiveHandler
                     {
                         Side = side,
                         location = item,
-                        AlarmMode = 0,
+                        AlarmMode = 0,//0是报警 1 是解除报警
                         LocationMode = 1,// 1是发单个 2 是发多个
                         locations = locations?.Locations?.Select(c => c.Addr).ToList(),
                         ErrorInfo = $"货架:{rackNode.No};IP:{rackNode.IP};面 {sideStr};储位:{item.Addr} 非法拿起!"
                     };
                     Logger.Error(alarm.ErrorInfo);
-                    SendNotice<RackAlarmInfo>(alarm, session);
+                    SendAlarmNotice<RackAlarmInfo>(alarm, session);
                     continue;
                 }
                 continue;

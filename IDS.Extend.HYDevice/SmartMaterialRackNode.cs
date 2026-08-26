@@ -1,4 +1,5 @@
 ﻿using HPSocket.Sdk;
+using IDS.Common;
 using IDS.Device.Communication;
 using IDS.HQ.HYDevice.Protocol;
 using IDS.HQ.Module;
@@ -74,8 +75,102 @@ namespace IDS.Extend.HYDevice
                 return node;
             return node;
         }
+        /// <summary>
+        /// 报警与接触报警的公共方法
+        /// </summary>
+        /// <typeparam name="E"></typeparam>
+        /// <param name="data"></param>
+        /// <param name="session"></param>
+        /// <param name="action"></param>
+        /// <returns></returns>
 
-        public void SendRackAlarm(string rackNo,byte side ,string message, Action<IdsSession>? action = null) {
+        public virtual IdsResult<object> SendAlarmNotice<E>(E data, IdsSession session, Action<IdsSession>? action = null)
+        {
+            var alarm = data as RackAlarmInfo;
+            //计算是报警还是解除报警
+            int alarmMode = alarm.AlarmMode;
+            IdsRedis redisClient = ContainerUtils.AutofacServiceProvider.GetRequiredService<IdsRedis>();
+
+            var message = DeviceMessage.GetAlarm(alarm.locations, alarm.AlarmMode, alarm.LocationMode, alarm.Side);
+            RackNode rack;
+            if (!string.IsNullOrEmpty(alarm.RackNo))
+            {
+                rack = GetRackNode(alarm.RackNo);
+            }
+            else {
+                rack = GetRackNode(session?.ResponseEndPoint.Address);
+            }
+            if (rack != null)
+            {
+                session?.ServerConnection.Send(message, new IdsEndPoint(rack.IP, rack.Port), (session) => {
+                    //按储位维度存储报警到redis，redis中每个储位维护一个报警信息。
+                    //发送设备报警完成后，记录到缓存,不管是否发送成功都需要记录
+                    action?.Invoke(session);
+                    string _side = alarm.Side == 0 ? "A" : "B";
+                    string fieldKey = $"{rack.No}_{_side}";
+                    string msg = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss");
+                    //计算报警地址, 单储位报警
+                    HashEntry[] hashFields = new HashEntry[0];
+                    RedisValue[] cancelAlarm = new RedisValue[0];
+                    if (alarm.AlarmMode==0 && alarm.LocationMode == 0) {
+                        hashFields = new HashEntry[1];
+                        hashFields[0] = new HashEntry(alarm.locations[0]+"", $"{msg}@{message}");
+                    }
+                    //计算报警地址, 多储位报警
+                    if (alarm.AlarmMode == 0 && alarm.LocationMode == 1)
+                    {
+                        hashFields = new HashEntry[alarm.locations.Count];
+                        for (int i = 0; i < alarm.locations.Count; i++) {
+                            hashFields[i] = new HashEntry(alarm.locations[i], $"{msg}@{message}");
+                        }
+                    }
+                    //计算报警地址, 单面
+                    if (alarm.AlarmMode == 0 && alarm.LocationMode == 2)
+                    {
+                        hashFields = new HashEntry[1];
+                        hashFields[0] = new HashEntry(_side, $"{msg}@{message}");
+                    }
+
+                    if (alarm.AlarmMode == 1 && alarm.LocationMode == 0)
+                    {
+                        cancelAlarm = new RedisValue[1];
+                        cancelAlarm[0] = new RedisValue(alarm.locations[0] + "");
+                    }
+                    //计算报警地址, 多储位报警
+                    if (alarm.AlarmMode == 1 && alarm.LocationMode == 1)
+                    {
+                        cancelAlarm = new RedisValue[alarm.locations.Count];
+                        for (int i = 0; i < alarm.locations.Count; i++)
+                        {
+                            cancelAlarm[i] = new RedisValue(alarm.locations[i] + "");
+                        }
+                    }
+                    //计算报警地址, 单面
+                    if (alarm.AlarmMode == 1 && alarm.LocationMode == 2)
+                    {
+                        cancelAlarm = new RedisValue[1];
+                        cancelAlarm[0] = new RedisValue(_side);
+                    }
+                    if (alarm.AlarmMode == 0) {
+                        redisClient.GetDatabase().HashSet($"{HYConstant.RackAlarmRecordKey}:{fieldKey}", hashFields);
+                    }
+                    if (alarm.AlarmMode == 1) {
+                        redisClient.GetDatabase().HashDelete($"{HYConstant.RackAlarmRecordKey}:{fieldKey}", cancelAlarm);
+                    }
+                });
+                return IdsResult<object>.ok();
+            }
+            return IdsResult<object>.failure();
+        }
+
+        /// <summary>
+        /// 发送蜂鸣灯报警
+        /// </summary>
+        /// <param name="rackNo"></param>
+        /// <param name="side"></param>
+        /// <param name="message"></param>
+        /// <param name="action"></param>
+        public void SendRackAlarmLight(string rackNo,byte side ,string message, Action<IdsSession>? action = null) {
             RackNode node = null;
             if (!_rackNodeWithNo.TryGetValue(rackNo, out node))
             {
@@ -86,19 +181,33 @@ namespace IDS.Extend.HYDevice
             byte[] alarm = DeviceMessage.GetAlarmLight((byte)side, (byte)ALARM.BUZZER, true);
             IdsEndPoint idsEnd =  new IdsEndPoint(node.IP, node.Port);
             var conn = ServerConnectionHolder.GetDefaultConnection();
-            conn?.Send(alarm, idsEnd, action);
+            conn?.Send(alarm, idsEnd, (session) => {
+                action?.Invoke(session);
+            });
         }
+        /// <summary>
+        ///  解除蜂鸣灯报警
+        /// </summary>
+        /// <param name="rackNo"></param>
+        /// <param name="side"></param>
+        /// <param name="action"></param>
 
-        public void SendCancelRackAlarm(string rackNo, byte side,Action<IdsSession>? action = null)
+        public void SendCancelRackAlarmLight(string rackNo, byte side,Action<IdsSession>? action = null)
         {
             RackNode node = null;
             if (!_rackNodeWithNo.TryGetValue(rackNo, out node))
             {
                 return;
             }
+            IdsRedis redisClient = ContainerUtils.AutofacServiceProvider.GetRequiredService<IdsRedis>();
             byte[] message = DeviceMessage.GetBigLightOnBuzzerMessage(side, (int)LightColor.Green, false); IdsEndPoint idsEnd = new IdsEndPoint(node.IP, node.Port);
             var conn = ServerConnectionHolder.GetDefaultConnection();
-            conn?.Send(message, idsEnd, action);
+            conn?.Send(message, idsEnd, (session) => {
+                string _side = side == 0 ? "A" : "B";
+                string fieldKey = $"{node.No}_{_side}";
+                redisClient.RemoveHashFieldCache(HYConstant.RackAlarmRecordKey, fieldKey);
+                action?.Invoke(session);
+            });
         }
 
         public void NoticeRackMultiLightOn(string rackNo, Dictionary<int, byte> OnLight, Action<IdsSession>? action = null) {

@@ -139,7 +139,43 @@ namespace IDS.HQ.Controller
 
             }
             byte shelfSide = data.RackSide == "A" ? (byte)0 : (byte)1;
-            SmartMaterialRackNode.Instance.SendCancelRackAlarm(data.RackId, shelfSide, (session) => { 
+            int locMode = 0;
+            List<int> addrs = new List<int>();
+            if (string.IsNullOrWhiteSpace(data.CellId))
+            {
+                locMode = 2;
+            }
+            else {
+                if (data.CellId.Contains(","))
+                {
+                    locMode = 1;
+                    addrs.AddRange(data.CellId.Split(',').Select(f =>
+                    {
+                        if (int.TryParse(f, out int addr))
+                        {
+                            return addr;
+                        }
+                        return -1;
+                    }).Where(f=>f!=-1));
+                }
+                else {
+                    locMode = 0;
+                    if (int.TryParse(data.CellId, out int addr))
+                    {
+                        addrs.Add(addr);
+                    }
+                }
+            
+            }
+            var alarm = new RackAlarmInfo
+            {
+                Side = shelfSide,
+                AlarmMode = 1,
+                LocationMode = locMode,
+                locations = addrs,
+                RackNo= data.RackId
+            };
+            SmartMaterialRackNode.Instance.SendAlarmNotice(alarm, null, (session) => { 
                var res = session.HandlerResult;
                 if (res.Success)
                 {

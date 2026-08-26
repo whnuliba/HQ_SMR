@@ -12,6 +12,6 @@ namespace IDS.Device.Communication
         public IServerConnection Connection { get; }
         public string ReceiveKey { get; set; }
         IdsResult<object> Handle<E>(byte[] data,IdsSession session, DeviceCommand<E> command);
-        IdsResult<object> SendNotice<E>(E e, IdsSession session);
+        IdsResult<object> SendAlarmNotice<E>(E e, IdsSession session, Action<IdsSession>? action = null);
     }
 }

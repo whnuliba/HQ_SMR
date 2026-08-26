@@ -1,6 +1,9 @@
 ﻿using IDS.Common;
 using IDS.Device.Communication;
 using IDS.HQ.HYDevice.Protocol;
+using IDS.HQ.Module;
+using IDS.Ioc;
+using IDS.Persistence;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -20,17 +23,9 @@ namespace IDS.Extend.HYDevice.Handler
             throw new NotImplementedException();
         }
 
-        public virtual IdsResult<object> SendNotice<E>(E data, IdsSession session)
-        {
-            var alarm = data as RackAlarmInfo;
-            var message = DeviceMessage.GetAlarm(alarm.locations, alarm.AlarmMode, alarm.LocationMode, alarm.Side);
-            RackNode rack = SmartMaterialRackNode.Instance.GetRackNode(session.ResponseEndPoint.Address);
-            if (rack != null) {
-                session?.ServerConnection.Send(message, new IdsEndPoint(rack.IP, rack.Port));
-                return IdsResult<object>.ok();
-            }
-
-            return IdsResult<object>.failure();
+        public virtual IdsResult<object> SendAlarmNotice<E>(E data, IdsSession session, Action<IdsSession>? action = null)
+        {  
+            return SmartMaterialRackNode.Instance.SendAlarmNotice<E>(data, session, action);
         }
     }
 }
