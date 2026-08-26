@@ -73,6 +73,8 @@ public partial class RackDbContext : IDSContext
     public virtual DbSet<RackTaskHis> RackTaskHis { get; set; }
     public virtual DbSet<MaterialInfo> MaterialInfo { get; set; }
     public virtual DbSet<DispatchMessage> DispatchMessage { get; set; }
+    public virtual DbSet<RackRunningLog> RackRunningLog { get; set; }
+    public virtual DbSet<RackAlarm> RackAlarm { get; set; }
     
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

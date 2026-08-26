@@ -76,6 +76,20 @@ namespace IDS.HQ.Module
 
                 entity.ToTable("DispatchMessage");
 
+            });          
+            modelBuilder.Entity<RackRunningLog>(entity =>
+            {
+                entity.HasKey(e => e.Id).HasName("PRIMARY");
+
+                entity.ToTable("RackRunningLog");
+
+            });
+            modelBuilder.Entity<RackAlarm>(entity =>
+            {
+                entity.HasKey(e => e.Id).HasName("PRIMARY");
+
+                entity.ToTable("RackAlarm");
+
             });
         }
     }

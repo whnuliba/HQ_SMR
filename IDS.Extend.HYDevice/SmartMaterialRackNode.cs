@@ -1,11 +1,14 @@
 ﻿using HPSocket.Sdk;
 using IDS.Common;
+using IDS.Common.Utils;
 using IDS.Device.Communication;
 using IDS.HQ.HYDevice.Protocol;
 using IDS.HQ.Module;
 using IDS.Ioc;
 using IDS.Persistence;
+using LinqToDB.Common;
 using LinqToDB.Data;
+using LinqToDB.EntityFrameworkCore;
 using log4net;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
@@ -18,6 +21,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Transactions;
 
 namespace IDS.Extend.HYDevice
 {
@@ -91,11 +95,13 @@ namespace IDS.Extend.HYDevice
         /// <param name="session"></param>
         /// <param name="action"></param>
         /// <returns></returns>
-        public bool IsExistsAlarm(string rack,string side,int? addr) {
+        public bool IsExistsAlarm(string rack, string side, int? addr)
+        {
             IdsRedis redisClient = ContainerUtils.AutofacServiceProvider.GetRequiredService<IdsRedis>();
-            var  rackNode = GetRackNode(rack);
-            bool exist = redisClient.GetDatabase().HashExists($"{HYConstant.RackAlarmRecordKey}:{rackNode.No}:{side}", addr+"");
-            if (!exist) {
+            var rackNode = GetRackNode(rack);
+            bool exist = redisClient.GetDatabase().HashExists($"{HYConstant.RackAlarmRecordKey}:{rackNode.No}:{side}", addr + "");
+            if (!exist)
+            {
                 //查看是否有面在报警
                 exist = redisClient.GetDatabase().HashExists($"{HYConstant.RackAlarmRecordKey}:{rackNode.No}:{side}", side);
             }
@@ -107,6 +113,7 @@ namespace IDS.Extend.HYDevice
             //计算是报警还是解除报警
             int alarmMode = alarm.AlarmMode;
             IdsRedis redisClient = ContainerUtils.AutofacServiceProvider.GetRequiredService<IdsRedis>();
+            IDbContextFactory<RackDbContext> dbContext = ContainerUtils.AutofacServiceProvider.GetRequiredService<IDbContextFactory<RackDbContext>>();
 
             var message = DeviceMessage.GetAlarm(alarm.locations, alarm.AlarmMode, alarm.LocationMode, alarm.Side);
             RackNode rack;
@@ -131,10 +138,25 @@ namespace IDS.Extend.HYDevice
                     //计算报警地址, 单储位报警
                     HashEntry[] hashFields = new HashEntry[0];
                     RedisValue[] cancelAlarm = new RedisValue[0];
+                    //增加写入数据库操作
+                    List<RackAlarm> rackAlarms = new();
                     if (alarm.AlarmMode == 0 && alarm.LocationMode == 0)
                     {
                         hashFields = new HashEntry[1];
                         hashFields[0] = new HashEntry(alarm.locations[0] + "", $"{msg}@{message}");
+                        var rackalarm = new RackAlarm
+                        {
+                            Id = IdUtils.Id + "",
+                            Message = $"{msg}@{message}",
+                            AlarmType = alarm.LocationMode,
+                            RackNo = rack.No,
+                            RackSide = _side,
+                            Location = alarm.locations[0] + "",
+                            Status = 0,
+                            HandleState = 0
+                        };
+                        rackalarm.saveInit();
+                        rackAlarms.Add(rackalarm);
                     }
                     //计算报警地址, 多储位报警
                     if (alarm.AlarmMode == 0 && alarm.LocationMode == 1)
@@ -143,6 +165,19 @@ namespace IDS.Extend.HYDevice
                         for (int i = 0; i < alarm.locations.Count; i++)
                         {
                             hashFields[i] = new HashEntry(alarm.locations[i], $"{msg}@{message}");
+                            var rackalarm = new RackAlarm
+                            {
+                                Id = IdUtils.Id + "",
+                                Message = $"{msg}@{message}",
+                                AlarmType = alarm.LocationMode,
+                                RackNo = rack.No,
+                                RackSide = _side,
+                                Location = alarm.locations[i] + "",
+                                Status = 0,
+                                HandleState = 0
+                            };
+                            rackalarm.saveInit();
+                            rackAlarms.Add(rackalarm);
                         }
                     }
                     //计算报警地址, 单面
@@ -150,12 +185,38 @@ namespace IDS.Extend.HYDevice
                     {
                         hashFields = new HashEntry[1];
                         hashFields[0] = new HashEntry(_side, $"{msg}@{message}");
+
+                        var rackalarm = new RackAlarm
+                        {
+                            Id = IdUtils.Id + "",
+                            Message = $"{msg}@{message}",
+                            AlarmType = alarm.LocationMode,
+                            RackNo = rack.No,
+                            RackSide = _side,
+                            Status = 0,
+                            HandleState = 0
+                        };
+                        rackalarm.saveInit();
+                        rackAlarms.Add(rackalarm);
                     }
 
                     if (alarm.AlarmMode == 1 && alarm.LocationMode == 0)
                     {
                         cancelAlarm = new RedisValue[1];
                         cancelAlarm[0] = new RedisValue(alarm.locations[0] + "");
+                        var rackalarm = new RackAlarm
+                        {
+                            Id = IdUtils.Id + "",
+                            Message = $"{msg}@{message}",
+                            AlarmType = alarm.LocationMode,
+                            RackNo = rack.No,
+                            RackSide = _side,
+                            Location = alarm.locations[0] + "",
+                            Status = 0,
+                            HandleState = 0
+                        };
+                        rackalarm.saveInit();
+                        rackAlarms.Add(rackalarm);
                     }
                     //计算报警地址, 多储位报警
                     if (alarm.AlarmMode == 1 && alarm.LocationMode == 1)
@@ -164,6 +225,19 @@ namespace IDS.Extend.HYDevice
                         for (int i = 0; i < alarm.locations.Count; i++)
                         {
                             cancelAlarm[i] = new RedisValue(alarm.locations[i] + "");
+                            var rackalarm = new RackAlarm
+                            {
+                                Id = IdUtils.Id + "",
+                                Message = $"{msg}@{message}",
+                                AlarmType = alarm.LocationMode,
+                                RackNo = rack.No,
+                                RackSide = _side,
+                                Location = alarm.locations[i] + "",
+                                Status = 0,
+                                HandleState = 0
+                            };
+                            rackalarm.saveInit();
+                            rackAlarms.Add(rackalarm);
                         }
                     }
                     //计算报警地址, 单面
@@ -171,27 +245,74 @@ namespace IDS.Extend.HYDevice
                     {
                         cancelAlarm = new RedisValue[1];
                         cancelAlarm[0] = new RedisValue(_side);
-                    }
-                    if (alarm.AlarmMode == 0)
-                    {
-                        redisClient.GetDatabase().HashSet($"{HYConstant.RackAlarmRecordKey}:{fieldKey}", hashFields);
-                    }
-                    if (alarm.AlarmMode == 1)
-                    {
-                        //判断若是按面接触，则整个面的所有储位全部解除报警
-                        if (alarm.LocationMode == 2)
+                        var rackalarm = new RackAlarm
                         {
-                            redisClient.GetDatabase().KeyDelete($"{HYConstant.RackAlarmRecordKey}:{fieldKey}");
-                        }
-                        else
+                            Id = IdUtils.Id + "",
+                            Message = $"{msg}@{message}",
+                            AlarmType = alarm.LocationMode,
+                            RackNo = rack.No,
+                            RackSide = _side,
+                            Status = 0,
+                            HandleState = 0
+                        };
+                        rackalarm.saveInit();
+                        rackAlarms.Add(rackalarm);
+                    }
+
+                    using (var ctx = dbContext.CreateDbContext())
+                    {
+                        using (var ts = new TransactionScope())
                         {
-                            redisClient.GetDatabase().HashDelete($"{HYConstant.RackAlarmRecordKey}:{fieldKey}", cancelAlarm);
-                            //这里还要反向操作下，若所有储位报警都接触，则删除整个Key
-                            var keys = redisClient.GetDatabase().HashKeys($"{HYConstant.RackAlarmRecordKey}:{fieldKey}");
-                            if (keys != null && keys.Length == 1 && keys[0].ToString() == _side)
+                            if (alarm.AlarmMode == 0)
                             {
-                                redisClient.GetDatabase().KeyDelete($"{HYConstant.RackAlarmRecordKey}:{fieldKey}");
+                                //节点写入到缓存
+                                redisClient.GetDatabase().HashSet($"{HYConstant.RackAlarmRecordKey}:{fieldKey}", hashFields);
+                                var options = new BulkCopyOptions
+                                {
+                                    BulkCopyType = BulkCopyType.ProviderSpecific,
+                                    KeepIdentity = true,
+         
+                                };
+                                ctx.BulkCopy(options, rackAlarms);
+                             }
+                            if (alarm.AlarmMode == 1)
+                            {
+
+                                //判断若是按面接触，则整个面的所有储位全部解除报警
+                                if (alarm.LocationMode == 2)
+                                {
+                                    redisClient.GetDatabase().KeyDelete($"{HYConstant.RackAlarmRecordKey}:{fieldKey}");
+                                    ctx.RackAlarm
+                                        .Where(a => a.RackNo == rack.No && a.RackSide == _side && a.HandleState == 0)
+                                        .ExecuteUpdateAsync(setters => setters
+                                            .SetProperty(a => a.HandleState, 1)
+                                            .SetProperty(a => a.LastModifyTime, DateTime.Now)
+                                     );
+                                }
+                                else
+                                {
+
+                                    redisClient.GetDatabase().HashDelete($"{HYConstant.RackAlarmRecordKey}:{fieldKey}", cancelAlarm);
+                                    ctx.RackAlarm
+                                         .Where(a => a.RackNo == rack.No && a.RackSide == _side && cancelAlarm.Contains(a.Location) && a.HandleState == 0)
+                                         .ExecuteUpdateAsync(setters => setters
+                                             .SetProperty(a => a.HandleState, 1)
+                                             .SetProperty(a => a.LastModifyTime, DateTime.Now)
+                                      );
+                                    //这里还要反向操作下，若所有储位报警都接触，则删除整个Key
+                                    var keys = redisClient.GetDatabase().HashKeys($"{HYConstant.RackAlarmRecordKey}:{fieldKey}");
+                                    if (keys != null && keys.Length == 1 && keys[0].ToString() == _side)
+                                    {
+                                        redisClient.GetDatabase().KeyDelete($"{HYConstant.RackAlarmRecordKey}:{fieldKey}");
+                                        ctx.RackAlarm
+                                        .Where(a => a.RackNo == rack.No && a.RackSide == _side && a.HandleState == 0)
+                                        .ExecuteUpdateAsync(setters => setters
+                                            .SetProperty(a => a.HandleState, 1)
+                                            .SetProperty(a => a.LastModifyTime, DateTime.Now));
+                                    }
+                                }
                             }
+                            ts.Complete();
                         }
                     }
                 });
