@@ -305,7 +305,12 @@ namespace IDS.Extend.HYDevice.ReceiveHandler
             }
             return IdsResult<object>.ok();
         }
+        //检查储位是否存在报警，若存在报警不做任务动作。直接推送一个报警日志，必须是所有报警都消除后才能取消。
+        //消除范围从大到小
+        public bool CheckIsExistsAlarm(string rackNo,string side,int? addr) {
 
+            return SmartMaterialRackNode.Instance.IsExistsAlarm(rackNo, side, addr);
+        }
         //检测上下货架状态
         public IdsResult<object> CheckOperation(InductiveShelfInfoDto locations, RackNode rackNode, IdsSession session)
         {
@@ -313,6 +318,7 @@ namespace IDS.Extend.HYDevice.ReceiveHandler
             {
                 return IdsResult<object>.failure();
             }
+           
             //处理上架部分，上架的的PPID只能根据redis来做串行化执行
             var upCountList = locations.Locations.Where(f => f.Status == 1).ToList();
             if (upCountList.Count > 1)
@@ -322,12 +328,16 @@ namespace IDS.Extend.HYDevice.ReceiveHandler
                 string sideStr = side == 0 ? "A" : "B";
                 //非法按下，同时间智能处理一个上架任务
                 rackNode.RackSide = sideStr;
+                //检查当前储位或面是否存在报警
+                if (CheckIsExistsAlarm(rackNode.No, sideStr, locations?.Locations[0].Addr)) {
+                    return IdsResult<object>.failure($"当前货架{rackNode.No}，面{sideStr},储位{locations?.Locations[0]?.Addr}正在发生报警，请先检查并消除报警");
+                }
                 var alarm = new RackAlarmInfo
                 {
                     Side = side,
                     location = upCountList.First(),
                     AlarmMode = 0,
-                    LocationMode = 1, // 1是发单个 2 是发多个
+                    LocationMode = 1, // 0是发单个 1 是发多个 2 单面
                     locations = locations?.Locations?.Select(c => c.Addr).ToList(),
                     ErrorInfo = $"货架:{rackNode.No};IP:{rackNode.IP};面 {sideStr};储位:{upCountList.First().Addr} 非法拿起或按下!"
                 };

@@ -31,47 +31,55 @@ namespace IDS.Extend.HYDevice
         private readonly static List<int> _allowPutwayList = new();
         public static SmartMaterialRackNode Instance => _instance.Value;
         private SmartMaterialRackNode() { }
-        public bool AddAllowPutwayAddr(string taskId ,List<int?> addrs ) {
+        public bool AddAllowPutwayAddr(string taskId, List<int?> addrs)
+        {
             IdsRedis redisClient = ContainerUtils.AutofacServiceProvider.GetRequiredService<IdsRedis>();
             //保存任务
-           return redisClient.GetDatabase().StringSet(HYConstant.AllowPutwayaDDRKey+ taskId, JsonConvert.SerializeObject(addrs),TimeSpan.FromMinutes(60));
+            return redisClient.GetDatabase().StringSet(HYConstant.AllowPutwayaDDRKey + taskId, JsonConvert.SerializeObject(addrs), TimeSpan.FromMinutes(60));
         }
-        public bool RemoveAllowPutwayAddr(string taskId) {
+        public bool RemoveAllowPutwayAddr(string taskId)
+        {
             IdsRedis redisClient = ContainerUtils.AutofacServiceProvider.GetRequiredService<IdsRedis>();
             return redisClient.GetDatabase().KeyDelete(HYConstant.AllowPutwayaDDRKey + taskId);
         }
-        public bool IsAllowPutwayAddr(string taskId,int addr) {
+        public bool IsAllowPutwayAddr(string taskId, int addr)
+        {
             IdsRedis redisClient = ContainerUtils.AutofacServiceProvider.GetRequiredService<IdsRedis>();
             RedisValue addrValue = redisClient.GetDatabase().StringGet(taskId);
-            if (!addrValue.HasValue) {
+            if (!addrValue.HasValue)
+            {
                 return false;
             }
             List<int> addrs = JsonConvert.DeserializeObject<List<int>>(addrValue);
-            if (addrs.Contains(addr)) {
+            if (addrs.Contains(addr))
+            {
                 return true;
             }
             return false;
         }
-        public RackNode AddNode(RackNode rackNode) {
+        public RackNode AddNode(RackNode rackNode)
+        {
             _rackNodeWithIp.AddOrUpdate(rackNode.IP, rackNode, (k, ov) => rackNode);
             _rackNodeWithNo.AddOrUpdate(rackNode.No, rackNode, (k, ov) => rackNode);
             return rackNode;
         }
         public void RemoveNode(RackNode rackNode)
         {
-            _rackNodeWithIp.TryRemove(rackNode.IP,out _);
+            _rackNodeWithIp.TryRemove(rackNode.IP, out _);
             _rackNodeWithNo.TryRemove(rackNode.No, out _);
         }
         public void RemoveNode(string rackNode)
         {
             RemoveNode(GetRackNode(rackNode));
         }
-        public RackNode GetRackNode(string key) {
+        public RackNode GetRackNode(string key)
+        {
             RackNode node = null;
-            if (_rackNodeWithIp.TryGetValue(key, out node)) {
+            if (_rackNodeWithIp.TryGetValue(key, out node))
+            {
                 return node;
             }
-            if(node==null && _rackNodeWithNo.TryGetValue(key, out node))
+            if (node == null && _rackNodeWithNo.TryGetValue(key, out node))
                 return node;
             return node;
         }
@@ -83,7 +91,16 @@ namespace IDS.Extend.HYDevice
         /// <param name="session"></param>
         /// <param name="action"></param>
         /// <returns></returns>
-
+        public bool IsExistsAlarm(string rack,string side,int? addr) {
+            IdsRedis redisClient = ContainerUtils.AutofacServiceProvider.GetRequiredService<IdsRedis>();
+            var  rackNode = GetRackNode(rack);
+            bool exist = redisClient.GetDatabase().HashExists($"{HYConstant.RackAlarmRecordKey}:{rackNode.No}:{side}", addr+"");
+            if (!exist) {
+                //查看是否有面在报警
+                exist = redisClient.GetDatabase().HashExists($"{HYConstant.RackAlarmRecordKey}:{rackNode.No}:{side}", side);
+            }
+            return exist;
+        }
         public virtual IdsResult<object> SendAlarmNotice<E>(E data, IdsSession session, Action<IdsSession>? action = null)
         {
             var alarm = data as RackAlarmInfo;
@@ -97,12 +114,14 @@ namespace IDS.Extend.HYDevice
             {
                 rack = GetRackNode(alarm.RackNo);
             }
-            else {
+            else
+            {
                 rack = GetRackNode(session?.ResponseEndPoint.Address);
             }
             if (rack != null)
             {
-                session?.ServerConnection.Send(message, new IdsEndPoint(rack.IP, rack.Port), (session) => {
+                session?.ServerConnection.Send(message, new IdsEndPoint(rack.IP, rack.Port), (session) =>
+                {
                     //按储位维度存储报警到redis，redis中每个储位维护一个报警信息。
                     //发送设备报警完成后，记录到缓存,不管是否发送成功都需要记录
                     action?.Invoke(session);
@@ -112,15 +131,17 @@ namespace IDS.Extend.HYDevice
                     //计算报警地址, 单储位报警
                     HashEntry[] hashFields = new HashEntry[0];
                     RedisValue[] cancelAlarm = new RedisValue[0];
-                    if (alarm.AlarmMode==0 && alarm.LocationMode == 0) {
+                    if (alarm.AlarmMode == 0 && alarm.LocationMode == 0)
+                    {
                         hashFields = new HashEntry[1];
-                        hashFields[0] = new HashEntry(alarm.locations[0]+"", $"{msg}@{message}");
+                        hashFields[0] = new HashEntry(alarm.locations[0] + "", $"{msg}@{message}");
                     }
                     //计算报警地址, 多储位报警
                     if (alarm.AlarmMode == 0 && alarm.LocationMode == 1)
                     {
                         hashFields = new HashEntry[alarm.locations.Count];
-                        for (int i = 0; i < alarm.locations.Count; i++) {
+                        for (int i = 0; i < alarm.locations.Count; i++)
+                        {
                             hashFields[i] = new HashEntry(alarm.locations[i], $"{msg}@{message}");
                         }
                     }
@@ -151,11 +172,27 @@ namespace IDS.Extend.HYDevice
                         cancelAlarm = new RedisValue[1];
                         cancelAlarm[0] = new RedisValue(_side);
                     }
-                    if (alarm.AlarmMode == 0) {
+                    if (alarm.AlarmMode == 0)
+                    {
                         redisClient.GetDatabase().HashSet($"{HYConstant.RackAlarmRecordKey}:{fieldKey}", hashFields);
                     }
-                    if (alarm.AlarmMode == 1) {
-                        redisClient.GetDatabase().HashDelete($"{HYConstant.RackAlarmRecordKey}:{fieldKey}", cancelAlarm);
+                    if (alarm.AlarmMode == 1)
+                    {
+                        //判断若是按面接触，则整个面的所有储位全部解除报警
+                        if (alarm.LocationMode == 2)
+                        {
+                            redisClient.GetDatabase().KeyDelete($"{HYConstant.RackAlarmRecordKey}:{fieldKey}");
+                        }
+                        else
+                        {
+                            redisClient.GetDatabase().HashDelete($"{HYConstant.RackAlarmRecordKey}:{fieldKey}", cancelAlarm);
+                            //这里还要反向操作下，若所有储位报警都接触，则删除整个Key
+                            var keys = redisClient.GetDatabase().HashKeys($"{HYConstant.RackAlarmRecordKey}:{fieldKey}");
+                            if (keys != null && keys.Length == 1 && keys[0].ToString() == _side)
+                            {
+                                redisClient.GetDatabase().KeyDelete($"{HYConstant.RackAlarmRecordKey}:{fieldKey}");
+                            }
+                        }
                     }
                 });
                 return IdsResult<object>.ok();
@@ -170,18 +207,20 @@ namespace IDS.Extend.HYDevice
         /// <param name="side"></param>
         /// <param name="message"></param>
         /// <param name="action"></param>
-        public void SendRackAlarmLight(string rackNo,byte side ,string message, Action<IdsSession>? action = null) {
+        public void SendRackAlarmLight(string rackNo, byte side, string message, Action<IdsSession>? action = null)
+        {
             RackNode node = null;
             if (!_rackNodeWithNo.TryGetValue(rackNo, out node))
             {
-                return ;
+                return;
             }
             string _side = side == 0 ? "A" : "B";
             Logger.Warn($"货架{rackNo},面{_side}触发报警{message}");
             byte[] alarm = DeviceMessage.GetAlarmLight((byte)side, (byte)ALARM.BUZZER, true);
-            IdsEndPoint idsEnd =  new IdsEndPoint(node.IP, node.Port);
+            IdsEndPoint idsEnd = new IdsEndPoint(node.IP, node.Port);
             var conn = ServerConnectionHolder.GetDefaultConnection();
-            conn?.Send(alarm, idsEnd, (session) => {
+            conn?.Send(alarm, idsEnd, (session) =>
+            {
                 action?.Invoke(session);
             });
         }
@@ -192,7 +231,7 @@ namespace IDS.Extend.HYDevice
         /// <param name="side"></param>
         /// <param name="action"></param>
 
-        public void SendCancelRackAlarmLight(string rackNo, byte side,Action<IdsSession>? action = null)
+        public void SendCancelRackAlarmLight(string rackNo, byte side, Action<IdsSession>? action = null)
         {
             RackNode node = null;
             if (!_rackNodeWithNo.TryGetValue(rackNo, out node))
@@ -202,7 +241,8 @@ namespace IDS.Extend.HYDevice
             IdsRedis redisClient = ContainerUtils.AutofacServiceProvider.GetRequiredService<IdsRedis>();
             byte[] message = DeviceMessage.GetBigLightOnBuzzerMessage(side, (int)LightColor.Green, false); IdsEndPoint idsEnd = new IdsEndPoint(node.IP, node.Port);
             var conn = ServerConnectionHolder.GetDefaultConnection();
-            conn?.Send(message, idsEnd, (session) => {
+            conn?.Send(message, idsEnd, (session) =>
+            {
                 string _side = side == 0 ? "A" : "B";
                 string fieldKey = $"{node.No}_{_side}";
                 redisClient.RemoveHashFieldCache(HYConstant.RackAlarmRecordKey, fieldKey);
@@ -210,15 +250,17 @@ namespace IDS.Extend.HYDevice
             });
         }
 
-        public void NoticeRackMultiLightOn(string rackNo, Dictionary<int, byte> OnLight, Action<IdsSession>? action = null) {
+        public void NoticeRackMultiLightOn(string rackNo, Dictionary<int, byte> OnLight, Action<IdsSession>? action = null)
+        {
 
             if (OnLight != null && OnLight.Count > 0)
             {
                 var rack = GetRackNode(rackNo);
                 var result = OnLight.GroupBy(kvp => kvp.Value)
-                    .ToDictionary(g => g.Key, g => g.Where(f=>f.Key!=null).Select(kvp => kvp.Key).ToList());
+                    .ToDictionary(g => g.Key, g => g.Where(f => f.Key != null).Select(kvp => kvp.Key).ToList());
                 //这个地方取决于要发多少总颜色的灯信息
-                foreach (var kvp in result) {
+                foreach (var kvp in result)
+                {
                     var conn = ServerConnectionHolder.GetDefaultConnection();
                     var idsEndpoint = new IdsEndPoint(rack.IP, rack.Port);
                     //获取报文
@@ -227,7 +269,8 @@ namespace IDS.Extend.HYDevice
                 }
             }
         }
-        public void NoticeRack(string rackNo, byte[] data,Action<IdsSession>? action=null) {
+        public void NoticeRack(string rackNo, byte[] data, Action<IdsSession>? action = null)
+        {
 
             var rack = GetRackNode(rackNo);
             var conn = ServerConnectionHolder.GetDefaultConnection();
@@ -247,26 +290,30 @@ namespace IDS.Extend.HYDevice
             }
         }
 
-        public void Initialize() {
+        public void Initialize()
+        {
             //用于同步数据库
             IDbContextFactory<RackDbContext> dbContext = ContainerUtils.AutofacServiceProvider.GetRequiredService<IDbContextFactory<RackDbContext>>();
-            using (var ctx = dbContext.CreateDbContext()) {
-              ctx.Set<Rack>().ToList().ForEach(item =>{
-                  var node = new RackNode
-                  {
-                      No = item.RackNo,
-                      IP = item.IP,
-                      Port = (ushort)item.Port,
-                      Enabled = "Y",
-                  };
-                  AddNode(node);
-              });
+            using (var ctx = dbContext.CreateDbContext())
+            {
+                ctx.Set<Rack>().ToList().ForEach(item =>
+                {
+                    var node = new RackNode
+                    {
+                        No = item.RackNo,
+                        IP = item.IP,
+                        Port = (ushort)item.Port,
+                        Enabled = "Y",
+                    };
+                    AddNode(node);
+                });
 
 
             }
         }
     }
-    public class RackNode {
+    public class RackNode
+    {
         // <Shelf No="B001" IP="10.40.135.10" Port="5000" LocalIP="localhost" LocalPort="8902" Enabled="Y" Alarm="Y" InductiveShelf="Y" AQty="656" BQty="656" />
         public string No { set; get; }
         public string IP { set; get; }
