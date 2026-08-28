@@ -25,5 +25,6 @@ namespace IDS.HQ.Module
         public string? LogLevel { get; set; }
 
         public int? HandleState { get; set; }
+        public string? Class { get; set; }
     }
 }

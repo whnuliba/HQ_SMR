@@ -1,8 +1,10 @@
 ﻿using IDS.Common;
+using IDS.Common.Utils;
 using IDS.Device.Communication;
 using IDS.Extend.HYDevice.Dispatch;
 using IDS.Extend.HYDevice.DTO;
 using IDS.Extend.HYDevice.Handler;
+using IDS.Extend.HYDevice.Utils;
 using IDS.Extension;
 using IDS.HQ.HYDevice.Protocol;
 using IDS.HQ.Module;
@@ -37,7 +39,7 @@ namespace IDS.Extend.HYDevice.ReceiveHandler
         //private string _checkPutwayKey = "HQ:HY:PUTWAY:CHECK:"; //料架号
         private string _checkOutboundKey = "HQ:HY:OUTBOUND:TASK:"; //下架任务号
        // private string _checkOutboundAddrKey = "HQ:HY:OUTBOUND:TASK:ADDR:"; //下架储位号
-        //public  ILogger<HYLocationStatusChangeHandler> Logger = (ILogger<HYLocationStatusChangeHandler>)ContainerUtils.AutofacServiceProvider.GetService(typeof(Logger));
+        //public  ILogger<HYLocationStatusChangeHandler> Logger = (ILogger<HYLocationStatusChangeHandler>)ContainerUtils.GetService(typeof(Logger));
         public ILog Logger = LogManager.GetLogger(typeof(HYLocationStatusChangeHandler));
 
         public override string ReceiveKey { get; set; } = "0x0F";
@@ -79,14 +81,14 @@ namespace IDS.Extend.HYDevice.ReceiveHandler
         public IdsResult<object> CheckUpTaskState(RackNode rackNode, LocationInfo locationInfo)
         {
 
-            IdsRedis RedisClient = ContainerUtils.AutofacServiceProvider.GetRequiredService<IdsRedis>();
+            IdsRedis RedisClient = ContainerUtils.GetRequiredService<IdsRedis>();
             var taskIdStr = RedisClient.GetDatabase().StringGet(HYConstant.CheckPutwayKey + rackNode.No+":"+rackNode.RackSide);
             if (string.IsNullOrEmpty(taskIdStr))
             {
                 return IdsResult<object>.failure($"设备{rackNode.No}没有等待上架的任务,非法按下");
             }
             RackLocationTaskDto locationTaskDto = JsonConvert.DeserializeObject<RackLocationTaskDto>(taskIdStr);
-            IDbContextFactory<RackDbContext> dbContext = ContainerUtils.AutofacServiceProvider.GetRequiredService<IDbContextFactory<RackDbContext>>();
+            IDbContextFactory<RackDbContext> dbContext = ContainerUtils.GetRequiredService<IDbContextFactory<RackDbContext>>();
             using (var ctx = dbContext.CreateDbContext())
             {
 
@@ -115,9 +117,9 @@ namespace IDS.Extend.HYDevice.ReceiveHandler
         }
         public IdsResult<object> ExecutePutway(RackNode rackNode, LocationInfo locationInfo)
         {
-            IDbContextFactory<RackDbContext> dbContext = ContainerUtils.AutofacServiceProvider.GetRequiredService<IDbContextFactory<RackDbContext>>();
+            IDbContextFactory<RackDbContext> dbContext = ContainerUtils.GetRequiredService<IDbContextFactory<RackDbContext>>();
             //需要解除锁定的任务，在redis可以获取
-            IdsRedis RedisClient = ContainerUtils.AutofacServiceProvider.GetRequiredService<IdsRedis>();
+            IdsRedis RedisClient = ContainerUtils.GetRequiredService<IdsRedis>();
 
             var checkStateRes = CheckUpTaskState(rackNode, locationInfo);
             if (!checkStateRes.Success) return checkStateRes;
@@ -195,9 +197,9 @@ namespace IDS.Extend.HYDevice.ReceiveHandler
         }
 
         public IdsResult<object> CheckAndExecDownTask(RackNode rackNode, LocationInfo locationInfo) {
-            IDbContextFactory<RackDbContext> dbContext = ContainerUtils.AutofacServiceProvider.GetRequiredService<IDbContextFactory<RackDbContext>>();
+            IDbContextFactory<RackDbContext> dbContext = ContainerUtils.GetRequiredService<IDbContextFactory<RackDbContext>>();
             //需要解除锁定的任务，在redis可以获取
-            IdsRedis RedisClient = ContainerUtils.AutofacServiceProvider.GetRequiredService<IdsRedis>();
+            IdsRedis RedisClient = ContainerUtils.GetRequiredService<IdsRedis>();
 
             //获取所有任务号
             //获取所有的value
@@ -330,16 +332,27 @@ namespace IDS.Extend.HYDevice.ReceiveHandler
                 rackNode.RackSide = sideStr;
                 //检查当前储位或面是否存在报警
                 if (CheckIsExistsAlarm(rackNode.No, sideStr, locations?.Locations[0].Addr)) {
-                    return IdsResult<object>.failure($"当前货架{rackNode.No}，面{sideStr},储位{locations?.Locations[0]?.Addr}正在发生报警，请先检查并消除报警");
+                    string msg = $"当前货架{rackNode.No}，面{sideStr},储位{locations?.Locations[0]?.Addr}正在发生多储位并行上架报警，请先检查并消除报警";
+                    var log = new RackRunningLog
+                    {
+                        RackNo = rackNode.No,
+                        RackSide = sideStr,
+                        Location = locations?.Locations[0].Addr + "",
+                        Message = msg,
+                        LogLevel = Utils.LogLevel.Error.ToString(),
+                        Class = nameof(HYLocationStatusChangeHandler)
+                    };
+                    RackRunningLogUtils<RackDbContext>.CreateLog(log);
+                    return IdsResult<object>.failure(msg);
                 }
                 var alarm = new RackAlarmInfo
                 {
                     Side = side,
                     location = upCountList.First(),
                     AlarmMode = 0,
-                    LocationMode = 1, // 0是发单个 1 是发多个 2 单面
+                    LocationMode = 0, // 0是发单个 1 是发多个 2 单面
                     locations = locations?.Locations?.Select(c => c.Addr).ToList(),
-                    ErrorInfo = $"货架:{rackNode.No};IP:{rackNode.IP};面 {sideStr};储位:{upCountList.First().Addr} 非法拿起或按下!"
+                    ErrorInfo = $"货架:{rackNode.No};IP:{rackNode.IP};面 {sideStr};储位:{upCountList.First().Addr} 非法拿起或按下,存在多个存储同时上架!"
                 };
                 Logger.Error(alarm.ErrorInfo);
                 SendAlarmNotice<RackAlarmInfo>(alarm, session);
@@ -353,6 +366,24 @@ namespace IDS.Extend.HYDevice.ReceiveHandler
                 //处理上架
                 if (item.Status == 1)
                 {
+
+                    //检查当前储位或面是否存在报警
+                    if (CheckIsExistsAlarm(rackNode.No, sideStr, locations?.Locations[0].Addr))
+                    {
+                        string msg = $"当前货架{rackNode.No}，面{sideStr},储位{locations?.Locations[0]?.Addr}正在发生上架报警，请先检查并消除报警";
+                        var log = new RackRunningLog
+                        {
+                            Id = IdUtils.Id+"",
+                            RackNo = rackNode.No,
+                            RackSide = sideStr,
+                            Location = locations?.Locations[0].Addr + "",
+                            Message = msg,
+                            LogLevel = Utils.LogLevel.Error.ToString(),
+                            Class = nameof(HYLocationStatusChangeHandler)
+                        };
+                        RackRunningLogUtils<RackDbContext>.CreateLog(log);
+                        return IdsResult<object>.failure(msg);
+                    }
                     var res = ExecutePutway(rackNode, upCountList.First());
                     if (!res.Success)
                     {
@@ -362,9 +393,9 @@ namespace IDS.Extend.HYDevice.ReceiveHandler
                             Side = side,
                             location = upCountList.First(),
                             AlarmMode = 0,
-                            LocationMode = 1, // 1是发单个 2 是发多个
+                            LocationMode = 0, // 1是发单个 2 是发多个
                             locations = locations?.Locations?.Select(c => c.Addr).ToList(),
-                            ErrorInfo = $"{res.Message};货架:{rackNode.No};IP:{rackNode.IP};面 {sideStr};储位:{item.Addr} 非法按下!"
+                            ErrorInfo = $"{res.Message};货架:{rackNode.No};IP:{rackNode.IP};面 {sideStr};储位:{item.Addr} 非法按下 ，原因{res.Message}!"
                         };
                         Logger.Error(alarm.ErrorInfo);
                         SendAlarmNotice<RackAlarmInfo>(alarm, session);
@@ -379,6 +410,25 @@ namespace IDS.Extend.HYDevice.ReceiveHandler
                 byte side = item.Addr + 1 > rackNode.AQty ? (byte)1 : (byte)0; //0=>A 1=>B
                 string sideStr = side == 0 ? "A" : "B";
                 rackNode.RackSide = sideStr;
+
+                //检查当前储位或面是否存在报警
+                if (CheckIsExistsAlarm(rackNode.No, sideStr, item.Addr))
+                {
+                    string msg = $"当前货架{rackNode.No}，面{sideStr},储位{locations?.Locations[0]?.Addr}正在发生下架报警，请先检查并消除报警";
+                    var log = new RackRunningLog
+                    {
+                        RackNo = rackNode.No,
+                        RackSide = sideStr,
+                        Location =item.Addr + "",
+                        Message = msg,
+                        LogLevel = Utils.LogLevel.Error.ToString(),
+                        Class = nameof(HYLocationStatusChangeHandler)
+                    };
+                    RackRunningLogUtils<RackDbContext>.CreateLog(log);
+                    //return IdsResult<object>.failure(msg);
+                    continue;
+                }
+
                 //处理下架
                 var res = CheckAndExecDownTask(rackNode, item);
                 if (!res.Success) {
@@ -388,9 +438,9 @@ namespace IDS.Extend.HYDevice.ReceiveHandler
                         Side = side,
                         location = item,
                         AlarmMode = 0,//0是报警 1 是解除报警
-                        LocationMode = 1,// 1是发单个 2 是发多个
+                        LocationMode = 0,// 0是发单个 1是发单个 2 是发多个
                         locations = locations?.Locations?.Select(c => c.Addr).ToList(),
-                        ErrorInfo = $"货架:{rackNode.No};IP:{rackNode.IP};面 {sideStr};储位:{item.Addr} 非法拿起!"
+                        ErrorInfo = $"货架:{rackNode.No};IP:{rackNode.IP};面 {sideStr};储位:{item.Addr} 非法拿起 ，原因{res.Message}!"
                     };
                     Logger.Error(alarm.ErrorInfo);
                     SendAlarmNotice<RackAlarmInfo>(alarm, session);

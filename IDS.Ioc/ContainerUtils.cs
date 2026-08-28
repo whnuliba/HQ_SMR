@@ -1,5 +1,6 @@
 ﻿using Autofac;
 using Autofac.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -19,6 +20,17 @@ namespace IDS.Ioc
         {
             AutofacServiceProvider = provider;
         }
-
+        public static E GetRequiredService<E>()
+        {
+            return AutofacServiceProvider.GetRequiredService<E>();
+        }
+        public static E GetService<E>(Type type)
+        {
+            return (E)AutofacServiceProvider.GetService(type);
+        }
+        public static E GetService<E>()
+        {
+            return AutofacServiceProvider.GetService<E>();
+        }
     }
 }

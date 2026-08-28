@@ -137,7 +137,7 @@ namespace IDS.HQ.Service
                         };
                         string locTaskStr = JsonConvert.SerializeObject(locTask);
                         Logger.Info(string.Format("创建任务完成{0},{1}", HYConstant.CheckPutwayKey + rackTask.RackNo + ":" + rackTask.RackSide, locTaskStr));
-                        RedisClient.GetDatabase().StringSet(HYConstant.CheckPutwayKey + rackTask.RackNo + ":" + rackTask.RackSide, locTaskStr);
+                        RedisClient.GetDatabase().StringSet(HYConstant.CheckPutwayKey + rackTask.RackNo + ":" + rackTask.RackSide, locTaskStr,TimeSpan.FromHours(2));
                         // SmartMaterialRackNode.Instance.AddAllowPutwayAddr(id+"", allowLight.ToList());
                         ts.Complete();
                     }

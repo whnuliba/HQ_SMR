@@ -15,5 +15,6 @@ namespace IDS.HQ.Module
         public int? AlarmType { get; set; }
         public string? Message { get; set; }
         public int? HandleState { get; set; }
+        public int LocationType { get; set; }
     }
 }
