@@ -1,4 +1,5 @@
-﻿using IDS.Extend.HYDevice.ReceiveHandler;
+﻿using IDS.Common;
+using IDS.Extend.HYDevice.ReceiveHandler;
 using IDS.HQ.Module;
 using IDS.Ioc;
 using IDS.Persistence;
@@ -49,6 +50,7 @@ namespace IDS.Extend.HYDevice.Utils
         }
         public static async Task CreateLog(RackRunningLog log)
         {
+            await IdsMessageHandler<object>.ErrorMessage(log?.Message);
             IDbContextFactory<T> dbContext = ContainerUtils.GetRequiredService<IDbContextFactory<T>>();
             using (var ctx = dbContext.CreateDbContext()) {
                 log.saveInit();

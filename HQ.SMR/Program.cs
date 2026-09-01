@@ -1,5 +1,6 @@
 using Autofac;
 using HQ.SMR;
+using HQ.SMR.WebSockets;
 using IDS.Common;
 using IDS.Device.Communication;
 using IDS.Extend.HYDevice;
@@ -7,6 +8,7 @@ using IDS.HQ.Module;
 using IDS.Ioc;
 using IDS.Persistence;
 using IDS.SMR.Bootstrap;
+using Microsoft.AspNetCore.WebSockets;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json.Serialization;
 
@@ -61,7 +63,7 @@ public partial class Program
             options.SerializerSettings.DateFormatString = "yyyy-MM-dd HH:mm:ss";
             // 在这里可以配置其他Newtonsoft.Json的设置
         });
-
+        builder.Services.AddSingleton<RackAlarmWsService>();
         // 在添加 Autofac 容器之后注册
         builder.Services.AddHostedService<AppInitializationService>();
 
@@ -87,8 +89,14 @@ public partial class Program
         builder.Services.AddEndpointsApiExplorer();
         builder.Services.AddSwaggerGen();
 
-        var app = builder.Build();
+        builder.Services.AddSignalR();
+        builder.Services.AddWebSockets(c => {
+            c.KeepAliveInterval = TimeSpan.FromSeconds(60);
+            //c.ReceiveBufferSize = 1024 * 2;
+        });
 
+        var app = builder.Build();
+        app.UseWebSockets();
         // Configure the HTTP request pipeline.
         if (app.Environment.IsDevelopment())
         {

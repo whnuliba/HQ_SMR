@@ -2,6 +2,7 @@
 using IDS.Common;
 using IDS.Common.Utils;
 using IDS.Device.Communication;
+using IDS.Extend.HYDevice.Handler;
 using IDS.HQ.HYDevice.Protocol;
 using IDS.HQ.Module;
 using IDS.Ioc;
@@ -137,6 +138,9 @@ namespace IDS.Extend.HYDevice
                     string fieldKey = $"{rack.No}_{_side}";
                     string hexNoDash = BitConverter.ToString(message).Replace("-", " ");
                     string msg = $"{DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss")}|报文[{hexNoDash}]|{alarm.ErrorInfo}";
+                    //广播消息出去
+               
+                    IdsMessageHandler<object>.ErrorMessage(msg);
                     //计算报警地址, 单储位报警
                     HashEntry[] hashFields = new HashEntry[0];
                     RedisValue[] cancelAlarm = new RedisValue[0];
