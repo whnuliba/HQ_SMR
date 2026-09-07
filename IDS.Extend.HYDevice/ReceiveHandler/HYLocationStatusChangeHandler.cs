@@ -313,6 +313,46 @@ namespace IDS.Extend.HYDevice.ReceiveHandler
 
             return SmartMaterialRackNode.Instance.IsExistsAlarm(rackNo, side, addr);
         }
+        public bool CheckLocationIsLegal(RackNode rackNode, InductiveShelfInfoDto locations) {
+            if (locations?.Locations.Count > 1) {
+                string msg = $"当前货架{rackNode.No}，储位{JsonConvert.SerializeObject(locations)}是非法的,存在多个并行触发储位，请检查";
+                var log = new RackRunningLog
+                {
+                    RackNo = rackNode.No,
+                    RackSide = "",
+                    Location = locations?.Locations.First().Addr+"",
+                    Message = msg,
+                    LogLevel = Utils.LogLevel.Error.ToString(),
+                    Class = nameof(HYLocationStatusChangeHandler)
+                };
+                IdsMessageHandler<object>.ErrorMessage(msg);
+                RackRunningLogUtils<RackDbContext>.CreateLog(log);
+                return false;
+            }
+            IDbContextFactory<RackDbContext> dbContext = ContainerUtils.GetRequiredService<IDbContextFactory<RackDbContext>>();
+            int loc = locations.Locations.First().Addr;
+            using (var ctx = dbContext.CreateDbContext()) {
+                bool isLegal = true;
+                var count = ctx.Count<RackInfo>(f => f.RackNo == rackNode.No && f.Location == locations.Locations.First().Addr);
+                if (count == 0) 
+                    isLegal = false;
+                if (!isLegal) {
+                    string msg = $"当前货架{rackNode.No}，储位{loc}是非法的，系统中不存在该储位或货架，请检查";
+                    var log = new RackRunningLog
+                    {
+                        RackNo = rackNode.No,
+                        RackSide = "",
+                        Location = loc + "",
+                        Message = msg,
+                        LogLevel = Utils.LogLevel.Error.ToString(),
+                        Class = nameof(HYLocationStatusChangeHandler)
+                    };
+                    IdsMessageHandler<object>.ErrorMessage(msg);
+                    RackRunningLogUtils<RackDbContext>.CreateLog(ctx,log);
+                }
+                return isLegal;
+            }
+        }
         //检测上下货架状态
         public IdsResult<object> CheckOperation(InductiveShelfInfoDto locations, RackNode rackNode, IdsSession session)
         {
@@ -320,7 +360,11 @@ namespace IDS.Extend.HYDevice.ReceiveHandler
             {
                 return IdsResult<object>.failure();
             }
-           
+            //检查货架及储位是否存在
+            if (!CheckLocationIsLegal(rackNode, locations))
+            {
+                return IdsResult<object>.failure();
+            }
             //处理上架部分，上架的的PPID只能根据redis来做串行化执行
             var upCountList = locations.Locations.Where(f => f.Status == 1).ToList();
             if (upCountList.Count > 1)

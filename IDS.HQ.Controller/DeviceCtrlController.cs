@@ -1,4 +1,5 @@
-﻿using IDS.Base;
+﻿using Azure;
+using IDS.Base;
 using IDS.Common;
 using IDS.Extend.HYDevice;
 using IDS.Extend.HYDevice.DTO;
@@ -270,9 +271,66 @@ namespace IDS.HQ.Controller
             if (!RequestData<AlarmCancelRequest>.isRequest(data))
                 return ResponseEntity<object>.Error("请传入合法参数");
             byte alarmAddr = (data.data.RackSide == "A") ? (byte)0 : (byte)1;
-            byte[] message = DeviceMessage.GetAlarmLight(alarmAddr, false);
-            SmartMaterialRackNode.Instance.NoticeRack(data.data.RackNo, message);
-            return ResponseEntity<object>.Success("取消报警请求已发送");
+            //byte[] message = DeviceMessage.GetAlarmLight(alarmAddr, false);
+            //SmartMaterialRackNode.Instance.NoticeRack(data.data.RackNo, message);
+            //return ResponseEntity<object>.Success("取消报警请求已发送");
+            var alarmReq = data.data;
+
+            //判断模式
+            List<int> addrs = new List<int>();
+            byte shelfSide = alarmReq.RackSide == "A" ? (byte)0 : (byte)1;
+            int locMode = 0;
+            if (string.IsNullOrWhiteSpace(alarmReq.Addrs))
+            {
+                locMode = 2;
+            }
+            else
+            {
+                if (alarmReq.Addrs.Contains(";"))
+                {
+                    locMode = 1;
+                    addrs.AddRange(alarmReq.Addrs.Split(',').Select(f =>
+                    {
+                        if (int.TryParse(f, out int addr))
+                        {
+                            return addr;
+                        }
+                        return -1;
+                    }).Where(f => f != -1));
+                }
+                else
+                {
+                    locMode = 0;
+                    if (int.TryParse(alarmReq.Addrs, out int addr))
+                    {
+                        addrs.Add(addr);
+                    }
+                }
+
+            }
+            var alarm = new RackAlarmInfo
+            {
+                Side = shelfSide,
+                AlarmMode =1, //取消
+                LocationMode = alarmReq.Mode,
+                locations = addrs,
+                RackNo = alarmReq.RackNo
+            };
+            ResponseEntity<object> response = null;
+            SmartMaterialRackNode.Instance.SendAlarmNotice(alarm, null, (session) => {
+                var res = session.HandlerResult;
+                if (res.Success)
+                {
+                    response = ResponseEntity<object>.Success("取消报警请求已发送，并且完成取消");
+                }
+                else
+                {
+                    response = ResponseEntity<object>.Error("超时未收到设备取消成功的反馈");
+                }
+            });
+            if (response == null)
+                return ResponseEntity<object>.Error("超时未收到设备取消成功的反馈");
+            return response;
         }
 
         /// <summary>

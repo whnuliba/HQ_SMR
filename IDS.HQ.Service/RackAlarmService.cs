@@ -1,5 +1,6 @@
 ﻿using IDS.Base;
 using IDS.Common;
+using IDS.Extend.HYDevice;
 using IDS.Extension;
 using IDS.HQ.Module;
 using IDS.HQ.Service.IService;
@@ -79,17 +80,73 @@ namespace IDS.HQ.Service
                 return IdsResult<bool>.failure("ID列表不能为空");
             }
 
+
             using (var ctx = DbContext())
             {
+                //批量解除报警
+                //检查如果是忽略，直接处理完成即可
                 var now = DateTime.Now;
-                var affectedRows = ctx.RackAlarm
+                if (handleState == 3) {
+                    var cancel = ctx.RackAlarm
                     .Where(a => ids.Contains(a.Id))
                     .ExecuteUpdate(setters => setters
                         .SetProperty(a => a.HandleState, handleState)
                         .SetProperty(a => a.LastModifyTime, now)
                     );
+                    return   IdsResult<bool>.ok(cancel>0);
+                }
 
-                return IdsResult<bool>.ok(affectedRows > 0);
+                var affectedRows = ctx.RackAlarm
+                  .Where(a => ids.Contains(a.Id)).ToList();
+                if (affectedRows.Count == 0)
+                    return IdsResult<bool>.failure("没有找到报警信息!");
+                List<int> addrs = new List<int>();
+                foreach (var item in affectedRows)
+                {
+                    byte shelfSide = item.RackSide == "A" ? (byte)0 : (byte)1;
+                    int locMode = 0;
+                    if (string.IsNullOrWhiteSpace(item.Location))
+                    {
+                        locMode = 2;
+                    }
+                    else
+                    {
+                        if (item.Location.Contains(";"))
+                        {
+                            locMode = 1;
+                            addrs.AddRange(item.Location.Split(',').Select(f =>
+                            {
+                                if (int.TryParse(f, out int addr))
+                                {
+                                    return addr;
+                                }
+                                return -1;
+                            }).Where(f => f != -1));
+                        }
+                        else
+                        {
+                            locMode = 0;
+                            if (int.TryParse(item.Location, out int addr))
+                            {
+                                addrs.Add(addr);
+                            }
+                        }
+
+                    }
+                    var alarm = new RackAlarmInfo
+                    {
+                        Side = shelfSide,
+                        AlarmMode = 1, //取消
+                        LocationMode = locMode,
+                        locations = addrs,
+                        RackNo = item.RackNo
+                    };
+                    ResponseEntity<object> response = null;
+                    SmartMaterialRackNode.Instance.SendAlarmNotice(alarm, null, (session) => {
+                        var res = session.HandlerResult;
+                    });
+                }
+                return IdsResult<bool>.ok(true);
             }
         }
 

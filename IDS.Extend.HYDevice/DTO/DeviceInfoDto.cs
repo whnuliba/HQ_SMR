@@ -126,6 +126,7 @@ namespace IDS.Extend.HYDevice.DTO
         public string RackNo { get; set; }
         public List<int> LedAddrs { get; set; }  // 地址列表，必须从小到大排序，单次控制672灯
         public byte Color { get; set; }          // 颜色代号
+        public string? RackSide { get; set; }
     }
 
     /// <summary>

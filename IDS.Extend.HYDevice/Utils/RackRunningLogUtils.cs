@@ -57,6 +57,13 @@ namespace IDS.Extend.HYDevice.Utils
                 ctx.Insert(log);
             }
         }
+
+        public static async Task CreateLog(IDSContext ctx, RackRunningLog log)
+        {
+            await IdsMessageHandler<object>.ErrorMessage(log?.Message);
+            log.saveInit();
+            ctx.Insert(log);
+        }
     }
 
     public enum LogLevel { 

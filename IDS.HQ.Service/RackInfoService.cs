@@ -3,6 +3,7 @@ using IDS.Base;
 using IDS.Common;
 using IDS.Common.Utils;
 using IDS.Extend.HYDevice;
+using IDS.Extend.HYDevice.DTO;
 using IDS.Extension;
 using IDS.HQ.Module;
 using IDS.HQ.Module.DTO;
@@ -222,6 +223,11 @@ namespace IDS.HQ.Service
             using (var ctx = DbContext()) {
                 return ctx.RackInfo.Where(f => f.RackNo == rackNo).ToList();
             }
+        }
+
+        public IdsResult<object> CancelCacheAlarm(LightMultiRequest request)
+        {
+            throw new NotImplementedException();
         }
     }
 }
