@@ -45,7 +45,7 @@ namespace IDS.HQ.Controller
 
             byte[] message = DeviceMessage.GetSingleLightFlashMessage(
                 data.data.Times,
-                data.data.Addr,
+                data.data.Addr-1,
                 data.data.Color);
             SmartMaterialRackNode.Instance.NoticeRack(data.data.RackNo, message);
             return ResponseEntity<object>.Success("ok");
@@ -77,7 +77,7 @@ namespace IDS.HQ.Controller
                 return ResponseEntity<object>.Error("请传入合法参数");
 
             byte[] message = DeviceMessage.GetMultiColorLightOnOffMessage(
-                data.data.Addr,
+                data.data.Addr-1,
                 data.data.LedQty,
                 data.data.Length,
                 data.data.Mode);
@@ -96,7 +96,7 @@ namespace IDS.HQ.Controller
                 return ResponseEntity<object>.Error("请传入合法参数");
 
             byte[] message = DeviceMessage.GetSingleLightOnOffMessage(
-                data.data.Addr,
+                data.data.Addr-1,
                 data.data.LedQty,
                 data.data.Color,
                 data.data.Mode);
@@ -159,7 +159,7 @@ namespace IDS.HQ.Controller
             if (!RequestData<DownSingleRequest>.isRequest(data))
                 return ResponseEntity<object>.Error("请传入合法参数");
 
-            byte[] message = DeviceMessage.GetSingleLightOffMessage(data.data.LedAddr);
+            byte[] message = DeviceMessage.GetSingleLightOffMessage(data.data.LedAddr-1);
             SmartMaterialRackNode.Instance.NoticeRack(data.data.RackNo, message);
             return ResponseEntity<object>.Success("ok");
         }
@@ -184,8 +184,8 @@ namespace IDS.HQ.Controller
 
             if (data.data.LedAddrs.Count > 672)
                 return ResponseEntity<object>.Error("单次控制最多672个灯");
-
-            byte[] message = DeviceMessage.GetMultiLightOnMessage(data.data.LedAddrs, data.data.Color);
+            var leds = data.data.LedAddrs.Select(c => c - 1).ToList();
+            byte[] message = DeviceMessage.GetMultiLightOnMessage(leds, data.data.Color);
             SmartMaterialRackNode.Instance.NoticeRack(data.data.RackNo, message);
             return ResponseEntity<object>.Success("ok");
         }
@@ -210,8 +210,8 @@ namespace IDS.HQ.Controller
 
             if (data.data.LedAddrs.Count > 672)
                 return ResponseEntity<object>.Error("单次控制最多672个灯");
-
-            byte[] message = DeviceMessage.GetMultiLightOffMessage(data.data.LedAddrs);
+            var leds = data.data.LedAddrs.Select(c => c - 1).ToList();
+            byte[] message = DeviceMessage.GetMultiLightOffMessage(leds);
             SmartMaterialRackNode.Instance.NoticeRack(data.data.RackNo, message);
             return ResponseEntity<object>.Success("ok");
         }

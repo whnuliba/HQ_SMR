@@ -1,4 +1,5 @@
-﻿using IDS.Base.Utils;
+﻿using HPSocket;
+using IDS.Base.Utils;
 using IDS.Common;
 using IDS.Device.Communication;
 using IDS.Extend.HYDevice.ReceiveHandler;
@@ -11,7 +12,6 @@ using System.Linq;
 using System.Runtime.InteropServices.JavaScript;
 using System.Text;
 using System.Threading.Tasks;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace IDS.Extend.HYDevice.Handler
 {
@@ -78,6 +78,10 @@ namespace IDS.Extend.HYDevice.Handler
                     {
                         session.taskCompletionSource.SetResult(res);
                     }
+                }
+                if (res.Success!=null && !res.Success && !string.IsNullOrEmpty(res.Message)) {
+
+                    IdsMessageHandler<object>.ErrorMessage(res.Message);
                 }
             }
             return IdsResult<E>.ok();
