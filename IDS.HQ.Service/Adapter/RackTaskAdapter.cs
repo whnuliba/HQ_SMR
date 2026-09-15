@@ -30,5 +30,8 @@ namespace IDS.HQ.Service.Adapter
         public IdsResult<RackTask> ForceCompleteTask(RackTask rackTask) {
             return _service.ForceCompleteTask(rackTask);
         }
+        public IdsResult<string> ResetDownLightOn(string id) {
+            return _service.ResetDownLightOn(id);
+        }
     }
 }

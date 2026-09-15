@@ -12,5 +12,7 @@ namespace IDS.HQ.Service
         IdsResult<RackTask> Outbound(RackTask rackTask);
         IdsResult<RackTask> CancelTask(RackTask rackTask);
         IdsResult<RackTask> ForceCompleteTask(RackTask rackTask);
+        //重置下线的储位亮灯，人工出发，按需出发
+        IdsResult<string> ResetDownLightOn(string id);
     }
 }

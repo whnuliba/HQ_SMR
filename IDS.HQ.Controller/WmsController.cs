@@ -126,6 +126,7 @@ namespace IDS.HQ.Controller
                 rackTask.TaskGroupId = groupId;
                 rackTask.ExtendId = wmsOutBound.SessionId;
                 rackTask.Locations = string.Join(",", rack.Value);
+                rackTask.AfterLightColor = wmsOutBound.LightColor;
                 IdsResult<RackTask> res = rackTaskAdapter.Outbound(rackTask);
                 message.Append(res.Message).Append(";");
             }

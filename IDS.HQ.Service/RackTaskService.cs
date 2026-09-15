@@ -717,5 +717,30 @@ namespace IDS.HQ.Service
             }
 
         }
+
+        public IdsResult<string> ResetDownLightOn(string id)
+        {
+            using (var ctx = DbContext()) {
+
+                var task  = ctx.RackTask.Where(f=>f.Id==id && f.TaskState == (int)TaskStates.DOWN_WAIT).FirstOrDefault();
+                if(task==null)
+                    return IdsResult<string>.failure("任务可能已经完成");
+                var redisentry =  RedisClient.GetDatabase().HashGetAll(_checkOutboundKey + task.RackNo);
+                if(redisentry==null || redisentry.Length==0)
+                    return IdsResult<string>.failure("任务可能已经完成");
+                var grp = redisentry.GroupBy(f => f.Value.ToString()).ToDictionary(f => f.Key, v => v.Select(f => {
+                   return int.Parse(f.Name);
+                }));
+                //过滤需要出库的ID
+                if (!grp.ContainsKey(task.Id)) {
+                    return IdsResult<string>.failure("任务可能已经完成");
+                }
+                var addrs = grp[task.Id];
+                Dictionary<int, byte>? dic = addrs.ToDictionary(k => k, v => task.AfterLightColor==null? (byte)LightColor.Red: (byte)task.AfterLightColor);
+                //发送亮灯信息
+                SmartMaterialRackNode.Instance.NoticeRackMultiLightOn(task.RackNo, dic);
+            }
+            return IdsResult<string>.ok();
+        }
     }
 }

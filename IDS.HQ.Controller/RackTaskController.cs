@@ -136,5 +136,16 @@ namespace IDS.HQ.Controller
                 return ResponseEntity<RackTask>.Success(res.Data);
             else return ResponseEntity<RackTask>.Error(res.Message);
         }
+        //ResetDownLightOn
+        [HttpPost]
+        [Route("ResetDownLightOn")]
+        public ResponseEntity<string> ResetDownLightOn(RequestData<string> data) {
+            if (!RequestData<string>.isRequest(data))
+                return ResponseEntity<string>.Error("上传信息为空");
+            IdsResult<string> res = _adapter.ResetDownLightOn(data.data);
+            if (res.Success)
+                return ResponseEntity<string>.Success(res.Data);
+            else return ResponseEntity<string>.Error(res.Message);
+        }
     }
 }
