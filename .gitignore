@@ -18,6 +18,7 @@
 *.user
 *.userosscache
 *.sln.docstates
+.git
 .git1
 .git2
 .git3
