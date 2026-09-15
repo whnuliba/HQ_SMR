@@ -136,7 +136,7 @@ namespace IDS.HQ.Controller
                 return ResponseEntity<RackTask>.Success(res.Data);
             else return ResponseEntity<RackTask>.Error(res.Message);
         }
-        //ResetDownLightOn
+        //ResetDownLightOn 
         [HttpPost]
         [Route("ResetDownLightOn")]
         public ResponseEntity<string> ResetDownLightOn(RequestData<string> data) {
