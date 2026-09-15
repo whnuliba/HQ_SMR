@@ -1,6 +1,7 @@
 ﻿using Azure;
 using IDS.Base;
 using IDS.Common;
+using IDS.Device.Communication;
 using IDS.Extend.HYDevice;
 using IDS.Extend.HYDevice.DTO;
 using IDS.HQ.HYDevice.Protocol;
@@ -45,7 +46,7 @@ namespace IDS.HQ.Controller
 
             byte[] message = DeviceMessage.GetSingleLightFlashMessage(
                 data.data.Times,
-                data.data.Addr-1,
+                 LocationUtils.SmrToDevice(data.data.Addr),
                 data.data.Color);
             SmartMaterialRackNode.Instance.NoticeRack(data.data.RackNo, message);
             return ResponseEntity<object>.Success("ok");
@@ -77,7 +78,7 @@ namespace IDS.HQ.Controller
                 return ResponseEntity<object>.Error("请传入合法参数");
 
             byte[] message = DeviceMessage.GetMultiColorLightOnOffMessage(
-                data.data.Addr-1,
+                 LocationUtils.SmrToDevice(data.data.Addr),
                 data.data.LedQty,
                 data.data.Length,
                 data.data.Mode);
@@ -96,7 +97,7 @@ namespace IDS.HQ.Controller
                 return ResponseEntity<object>.Error("请传入合法参数");
 
             byte[] message = DeviceMessage.GetSingleLightOnOffMessage(
-                data.data.Addr-1,
+                LocationUtils.SmrToDevice(data.data.Addr),
                 data.data.LedQty,
                 data.data.Color,
                 data.data.Mode);
@@ -210,7 +211,7 @@ namespace IDS.HQ.Controller
 
             if (data.data.LedAddrs.Count > 672)
                 return ResponseEntity<object>.Error("单次控制最多672个灯");
-            var leds = data.data.LedAddrs.Select(c => c - 1).ToList();
+            var leds = data.data.LedAddrs.Select(c => LocationUtils.SmrToDevice(c)).ToList();
             byte[] message = DeviceMessage.GetMultiLightOffMessage(leds);
             SmartMaterialRackNode.Instance.NoticeRack(data.data.RackNo, message);
             return ResponseEntity<object>.Success("ok");
@@ -289,7 +290,7 @@ namespace IDS.HQ.Controller
                 if (alarmReq.Addrs.Contains(";"))
                 {
                     locMode = 1;
-                    addrs.AddRange(alarmReq.Addrs.Split(',').Select(f =>
+                    addrs.AddRange(alarmReq.Addrs.Split(';').Select(f =>
                     {
                         if (int.TryParse(f, out int addr))
                         {
@@ -311,14 +312,14 @@ namespace IDS.HQ.Controller
             var alarm = new RackAlarmInfo
             {
                 Side = shelfSide,
-                AlarmMode =1, //取消
+                AlarmMode = alarmReq.Length,//1, //取消
                 LocationMode = alarmReq.Mode,
                 locations = addrs,
                 RackNo = alarmReq.RackNo
             };
             ResponseEntity<object> response = null;
             SmartMaterialRackNode.Instance.SendAlarmNotice(alarm, null, (session) => {
-                var res = session.HandlerResult;
+                var res = session.HandlerResult??IdsResult<object>.failure("超时等待无返回");
                 if (res.Success)
                 {
                     response = ResponseEntity<object>.Success("取消报警请求已发送，并且完成取消");

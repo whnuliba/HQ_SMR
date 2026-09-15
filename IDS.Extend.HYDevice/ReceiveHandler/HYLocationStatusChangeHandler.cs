@@ -27,6 +27,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Transactions;
+using static LinqToDB.Common.Configuration;
 
 namespace IDS.Extend.HYDevice.ReceiveHandler
 {
@@ -154,6 +155,7 @@ namespace IDS.Extend.HYDevice.ReceiveHandler
                     //ctx.Entry(rackinfoload).State = EntityState.Modified;
                     ctx.Entry(rackinfoload).Property(p => p.LastModifyTime).IsModified = true;
                     ctx.Entry(rackinfoload).Property(p => p.Loading).IsModified = true;
+                    ctx.Entry(rackinfoload).Property(p => p.PPID).IsModified = true;
                     int i = ctx.SaveChanges();
                     if (i == 0)
                     {
@@ -187,7 +189,15 @@ namespace IDS.Extend.HYDevice.ReceiveHandler
                     };
                     TaskReturnWmsDispatchHandler.Instance.SendLocationInfoChange<LocationInfoChangeData>(sendWms, uptasktask.Id);
                     #endregion
-
+                    //关闭亮灯
+                    var locsStr = RedisClient.GetDatabase().StringGet(HYConstant.CheckPutwayKey + rackNode.No + ":" + rackNode.RackSide);
+                    if (!string.IsNullOrWhiteSpace(locsStr)) {
+                       var locs = JsonConvert.DeserializeObject<RackLocationTaskDto>(locsStr);
+                        //调用多灯灭的接口
+                        var leds = locs.Locations?.Where(f => f != null).Select(f=>LocationUtils.SmrToDevice(f??0)).ToList();
+                        byte[] message = DeviceMessage.GetMultiLightOffMessage(leds);
+                        SmartMaterialRackNode.Instance.NoticeRack(rackNode.No, message);
+                    }
                     //清除Redis上的任务
                     RedisClient.GetDatabase().KeyDelete(HYConstant.CheckPutwayKey + rackNode.No + ":" + rackNode.RackSide);
                     ts.Complete();

@@ -44,11 +44,12 @@ namespace IDS.HQ.HYDevice.Protocol
             array[4] = Convert.ToByte(strLength.Substring(2), 16);
             for (int j = 0; j < alarmAddrs.Count; j++)
             {
-                string addrStr = alarmAddrs[j].ToString("x").PadLeft(4, '0');
+                
+                string addrStr =  alarmAddrs[j].ToString("x").PadLeft(4, '0');
                 array[4 + 2 * j + 1] = Convert.ToByte(addrStr.Substring(0, 2), 16);
                 array[4 + 2 * j + 2] = Convert.ToByte(addrStr.Substring(2), 16);
             }
-            return GetMessage((byte)(num + 2), 28, data);
+            return GetMessage((byte)(num + 2), 28, array);
 
         }
 

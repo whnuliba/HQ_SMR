@@ -24,7 +24,8 @@ namespace IDS.Extend.HYDevice.Handler
         }
 
         public virtual IdsResult<object> SendAlarmNotice<E>(E data, IdsSession session, Action<IdsSession>? action = null)
-        {  
+        {
+            //return IdsResult<object>.ok();
             return SmartMaterialRackNode.Instance.SendAlarmNotice<E>(data, session, action);
         }
     }

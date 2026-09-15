@@ -84,6 +84,7 @@ namespace IDS.HQ.Service
                         IP = rackInfo.IP,
                         Port= rackInfo.Port,
                         Inductive = 1,
+                        Loading = (int)LocationStates.FREE,
                         Location = i,
                         Enable = 1,
                         Id = id + ""
@@ -104,6 +105,7 @@ namespace IDS.HQ.Service
                         Inductive = 1,
                         Location = i,
                         Enable = 1,
+                        Loading = (int)LocationStates.FREE,
                         Id = id + ""
                     };
                     rack.saveInit();

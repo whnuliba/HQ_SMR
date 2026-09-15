@@ -2,10 +2,12 @@
 using IDS.Base;
 using IDS.Common;
 using IDS.Common.Utils;
+using IDS.Device.Communication;
 using IDS.Extend.HYDevice;
 using IDS.Extend.HYDevice.DTO;
 using IDS.Extend.HYDevice.ReceiveHandler;
 using IDS.Extension;
+using IDS.HQ.HYDevice.Protocol;
 using IDS.HQ.Module;
 using IDS.HQ.Module.DTO;
 using IDS.Ioc;
@@ -78,7 +80,13 @@ namespace IDS.HQ.Service
             string token = RedisClient.GetDatabase().StringGet(HYConstant.CheckPutwayKey + rackTask.RackNo + ":" + rackTask.RackSide);
             if (!string.IsNullOrWhiteSpace(token))
             {
-                return IdsResult<RackTask>.failure($"01:当前该货架{rackTask.RackNo}有正在上架但未绑定的任务,任务token:{token}");
+                //从新刷灯
+                var locs = JsonConvert.DeserializeObject<RackLocationTaskDto>(token);
+                //调用多灯灭的接口
+                var leds = locs.Locations?.Where(f => f != null).Select(f => LocationUtils.SmrToDevice(f ?? 0)).ToList();
+                Dictionary<int, byte> dic = leds.ToDictionary(k => k, v => rackTask.AfterLightColor == null ? (byte)LightColor.LightWhite : (byte)rackTask.AfterLightColor);
+                SmartMaterialRackNode.Instance.NoticeRackMultiLightOn(rackTask.RackNo, dic);
+                return IdsResult<RackTask>.failure($"01:当前该货架{rackTask.RackNo}有正在上架但未绑定的任务,已经重新刷灯,任务token:{locs.TaskId}");
             }
             using (var ctx = DbContext())
             {

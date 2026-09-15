@@ -26,7 +26,6 @@ namespace IDS.Extend.HYDevice
             bool send =false;
             if (data != null && data.Length > 13 && (send = base.Send(data, endpoint))) {
                 //按照HY协议的要求，且报文必须包含ID，发送数据时需要将Session注入到SessionContext中
-                if (data != null && data.Length > 13) { }
                 byte[] result = new byte[8];
                 Array.Copy(data, 3, result, 0, 8);
                 long value = BitConverter.ToInt64(result, 0);

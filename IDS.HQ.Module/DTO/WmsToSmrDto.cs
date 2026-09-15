@@ -81,7 +81,7 @@ namespace IDS.HQ.Module.DTO
         /// </summary>
         [JsonPropertyName("Qty")]
         [JsonProperty("Qty")]
-        public string? Qty { get; set; }
+        public decimal? Qty { get; set; }
 
         /// <summary>
         /// 客户料号

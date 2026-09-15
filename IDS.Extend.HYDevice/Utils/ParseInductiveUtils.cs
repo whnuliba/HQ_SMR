@@ -1,4 +1,5 @@
-﻿using IDS.Extend.HYDevice.DTO;
+﻿using IDS.Device.Communication;
+using IDS.Extend.HYDevice.DTO;
 using IDS.HQ.HYDevice.Protocol;
 using System;
 using System.Collections.Generic;
@@ -64,7 +65,7 @@ namespace IDS.Extend.HYDevice.Utils
                     var location = new LocationInfo
                     {
                         // 地址：高字节在前（大端序）
-                        Addr = cmd[offset] * 256 + cmd[offset + 1],
+                        Addr = LocationUtils.DeviceToSmr(cmd[offset] * 256 + cmd[offset + 1]),  //设备物理地址是比贴标的标识地址小1
                         // 状态：0=弹起/下架，1=按下/上架
                         Status = cmd[offset + 2]
                     };
