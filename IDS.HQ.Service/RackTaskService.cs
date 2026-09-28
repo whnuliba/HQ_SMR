@@ -467,7 +467,12 @@ namespace IDS.HQ.Service
                         ctx.Insert(cancelTask);
                         ctx.Remove(task);
                         ctx.SaveChanges();
-
+                        string output = $"delete from MaterialInfo output deleted.* into MaterialInfoCancel where TaskId = '{task.Id}'";
+                        int i  =ctx.Sql(output);
+                        if (i == 0) {
+                            Logger.Error($"任务取消失败，物料信息归档错误,货架:{rackTask.RackNo},面:{rackTask.RackSide},任务号:{task.Id}");
+                            throw new BussinessException($"任务取消失败，物料信息归档错误,货架:{rackTask.RackNo},面:{rackTask.RackSide},任务号:{task.Id}");
+                        }
                         //检查当前位置信息是空的货架
                         List<int?> allowLight = (from light in ctx.RackInfo
                                                  where light.RackNo == rackTask.RackNo
@@ -638,6 +643,8 @@ namespace IDS.HQ.Service
                         ctx.Entry(task).Property(p => p.LastModifyUser).IsModified = true;
                         ctx.Entry(task).Property(p => p.TaskState).IsModified = true;
                         ctx.SaveChanges();
+                        //获取当前货架的所有储位信息，对PPID进行转移归档
+                        var rackinfoPPID = ctx.RackInfo.Where(f => f.RackNo == rackTask.RackNo && completeDoc.Contains(f.Location)).Select(c=>c.PPID).ToList();
                         int i = ctx.RackInfo
                             .Where(r => r.RackNo == task.RackNo && completeDoc.Contains(r.Location))
                             .ExecuteUpdate(setters => setters
@@ -645,6 +652,20 @@ namespace IDS.HQ.Service
                                 .SetProperty(r => r.Loading, (int)LocationStates.FREE)
                                    .SetProperty(r => r.PPID, string.Empty)
                             );
+                        //进行归档处理
+                        string deleteTask = $"delete from RackTask output deleted.* into RackTaskHis where Id = '{task.Id}'";
+                        ctx.Sql(deleteTask);
+                        if (rackinfoPPID != null && rackinfoPPID.Count>0)
+                        {
+                            string ppid = string.Join("','", rackinfoPPID);
+                            //移走物料信息
+                            string output = $"delete from MaterialInfo output deleted.* into MaterialInfoHis where PPID in ('{ppid}')";
+                            int i1 = ctx.Sql(output);
+                            if (i1 == 0)
+                            {
+                                Logger.Error($"任务取消失败，物料信息归档错误,货架,PPID:{ppid}");
+                            }
+                        }
                         RedisClient.GetDatabase().HashDelete(_checkOutboundKey + rackTask.RackNo, hashFields);
                         ts.Complete();
                     }
@@ -709,6 +730,10 @@ namespace IDS.HQ.Service
                         ctx.Entry(rackinfo).Property(p => p.PPID).IsModified = true;
                         ctx.SaveChanges();
                     }
+
+                    string deleteTask = $"delete from RackTask output deleted.* into RackTaskHis where Id = '{task.Id}'";
+                    ctx.Sql(deleteTask);
+
                     RedisClient.GetDatabase().KeyDelete(HYConstant.CheckPutwayKey + rackTask.RackNo + ":" + rackTask.RackSide);
                     ts.Complete();
                 }

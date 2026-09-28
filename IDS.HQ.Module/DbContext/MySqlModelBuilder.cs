@@ -73,6 +73,26 @@ namespace IDS.HQ.Module
                    .HasColumnName("NO_09");
 
             });
+            modelBuilder.Entity<MaterialInfoHis>(entity =>
+            {
+                entity.HasKey(e => e.Id).HasName("PRIMARY");
+
+                entity.ToTable("MaterialInfoHis");
+                entity.Property(e => e.No09)
+                   //.HasMaxLength(30)
+                   .HasColumnName("NO_09");
+
+            });
+            modelBuilder.Entity<MaterialInfoCancel>(entity =>
+            {
+                entity.HasKey(e => e.Id).HasName("PRIMARY");
+
+                entity.ToTable("MaterialInfoCancel");
+                entity.Property(e => e.No09)
+                   //.HasMaxLength(30)
+                   .HasColumnName("NO_09");
+
+            });
             modelBuilder.Entity<DispatchMessage>(entity =>
             {
                 entity.HasKey(e => e.Id).HasName("PRIMARY");
