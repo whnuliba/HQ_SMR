@@ -91,7 +91,7 @@ namespace IDS.HQ.Service
                     predicate = predicate.And(f => taskIds.Contains(f.TaskId));
             }
 
-            // 按料架ID批量查询
+            // 按料架ID批量查询 1
             if (!string.IsNullOrWhiteSpace(upload.RackId))
             {
                 var rackIds = upload.RackId.Split(",").ToList();
