@@ -6,6 +6,7 @@ using IDS.Ioc;
 using IDS.Persistence;
 using Microsoft.AspNetCore.Mvc;
 using System.Collections.Generic;
+using static LinqToDB.Reflection.Methods.LinqToDB.Insert;
 
 namespace IDS.HQ.Controller
 {
@@ -65,6 +66,14 @@ namespace IDS.HQ.Controller
                 return ResponseEntity<MaterialInfo>.Error(res.Message);
             }
             return ResponseEntity<MaterialInfo>.Success(res.Data);
+        }
+
+        [HttpPost]
+        [Route("get-materials")]
+        public ResponseEntity<Page<VMaterialInfo>> GetMarerials(Page<VMaterialInfo> page)
+        {
+            var res = _adapter.GetMaterialInfo(page);
+            return ResponseEntity<Page<VMaterialInfo>>.Success(page);
         }
     }
 }

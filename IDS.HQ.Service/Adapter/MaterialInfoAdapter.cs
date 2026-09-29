@@ -1,9 +1,11 @@
-﻿using IDS.Common;
+﻿using IDS.Base;
+using IDS.Common;
 using IDS.HQ.Module;
 using IDS.HQ.Service.IService;
 using IDS.Ioc;
 using IDS.Persistence;
 using System.Collections.Generic;
+using System.Linq.Expressions;
 
 namespace IDS.HQ.Service.Adapter
 {
@@ -30,6 +32,10 @@ namespace IDS.HQ.Service.Adapter
         public IdsResult<MaterialInfo> GetByPPID(string ppid)
         {
             return _service.GetByPPID(ppid);
+        }
+
+        public Page<VMaterialInfo> GetMaterialInfo(Page<VMaterialInfo> page, Expression<Func<VMaterialInfo, bool>> predicate = null) {
+            return _service.GetMaterialInfo(page, predicate);
         }
     }
 }

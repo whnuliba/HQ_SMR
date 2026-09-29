@@ -2,6 +2,7 @@
 using IDS.Common;
 using IDS.Extension;
 using IDS.HQ.Module;
+using IDS.HQ.Module.DTO;
 using IDS.HQ.Service.IService;
 using IDS.Ioc;
 using IDS.Persistence;
@@ -121,6 +122,92 @@ namespace IDS.HQ.Service
             }
 
             return base.List(page, predicate);
+        }
+
+        public Page<VMaterialInfo> GetMaterialInfo(Page<VMaterialInfo> page, Expression<Func<VMaterialInfo, bool>> predicate)
+        {
+
+            var upload = page.requestData ?? new VMaterialInfo();
+
+            // 按任务ID批量查询
+            if (!string.IsNullOrWhiteSpace(upload.TaskId))
+            {
+                var taskIds = upload.TaskId.Split(",").ToList();
+                if (predicate == null)
+                    predicate = f => taskIds.Contains(f.TaskId);
+                else
+                    predicate = predicate.And(f => taskIds.Contains(f.TaskId));
+            }
+
+            // 按料架ID批量查询
+            if (!string.IsNullOrWhiteSpace(upload.RackId))
+            {
+                var rackIds = upload.RackId.Split(",").ToList();
+                if (predicate == null)
+                    predicate = f => rackIds.Contains(f.RackId);
+                else
+                    predicate = predicate.And(f => rackIds.Contains(f.RackId));
+            }
+
+            // 按PPID批量查询
+            if (!string.IsNullOrWhiteSpace(upload.PPID))
+            {
+                var ppids = upload.PPID.Split(",").ToList();
+                if (predicate == null)
+                    predicate = f => ppids.Contains(f.PPID);
+                else
+                    predicate = predicate.And(f => ppids.Contains(f.PPID));
+            }
+
+            // 按供应商编码查询
+            if (!string.IsNullOrWhiteSpace(upload.VendorCode))
+            {
+                if (predicate == null)
+                    predicate = f => f.VendorCode.Contains(upload.VendorCode);
+                else
+                    predicate = predicate.And(f => f.VendorCode.Contains(upload.VendorCode));
+            }
+
+            if (upload.StartCreateTime != null) {
+                if (predicate == null)
+                    predicate = f => f.CreateTime>= upload.StartCreateTime;
+                else
+                    predicate = predicate.And(f => f.CreateTime >= upload.StartCreateTime);
+            }
+
+
+            if (upload.EndCreateTime != null)
+            {
+                if (predicate == null)
+                    predicate = f => f.CreateTime <= upload.StartCreateTime;
+                else
+                    predicate = predicate.And(f => f.CreateTime <= upload.StartCreateTime);
+            }
+            if (upload.StartUpTime != null)
+            {
+                if (predicate == null)
+                    predicate = f => f.UpTime >= upload.StartUpTime;
+                else
+                    predicate = predicate.And(f => f.UpTime >= upload.StartUpTime);
+            }
+
+
+            if (upload.EndUpTime != null)
+            {
+                if (predicate == null)
+                    predicate = f => f.UpTime <= upload.EndUpTime;
+                else
+                    predicate = predicate.And(f => f.UpTime <= upload.EndUpTime);
+            }
+            using (var ctx = DbContext()) {
+
+                var req = page.requestData;
+                var data = ctx.Query<VMaterialInfo>(predicate).Skip((page.current - 1) * page.pageSize).Take(page.pageSize).ToList();
+                var count = ctx.Count<VMaterialInfo>(predicate);
+                Page<VMaterialInfo> page1 = new Page<VMaterialInfo>(count, data, page.pageSize, page.current);
+                return page1;
+
+            }
         }
     }
 }

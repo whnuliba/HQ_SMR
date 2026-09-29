@@ -19,6 +19,7 @@ using log4net.Repository.Hierarchy;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.IdentityModel.Tokens;
 using Newtonsoft.Json;
 using StackExchange.Redis;
 using System;
@@ -151,6 +152,7 @@ namespace IDS.Extend.HYDevice.ReceiveHandler
                 using (var ts = new TransactionScope()) {
                     rackinfoload.PPID = uptasktask.PPID;
                     rackinfoload.Loading = (int)LocationStates.LOADING;
+                    rackinfoload.updateInit();
                     ctx.RackInfo.Attach(rackinfoload);
                     //ctx.Entry(rackinfoload).State = EntityState.Modified;
                     ctx.Entry(rackinfoload).Property(p => p.LastModifyTime).IsModified = true;
@@ -174,6 +176,8 @@ namespace IDS.Extend.HYDevice.ReceiveHandler
                     {
                         return IdsResult<object>.failure($"货架{rackNode.No}:储位{locationInfo.Addr} 任务状态变更失败，请检查");
                     }
+                    string deleteTask = $"delete from RackTask output deleted.* into RackTaskHis where Id = '{uptasktask.Id}'";
+                    ctx.Sql(deleteTask);
                     #region 处理发送给WMS的逻辑
                     var sendWms = new List<LocationInfoChangeData>
                     {
@@ -261,7 +265,7 @@ namespace IDS.Extend.HYDevice.ReceiveHandler
                     return IdsResult<object>.failure($"设备{rackNode.No}没有等待出库的任务{taskId}，Redis和数据库数据不一致");
                 }
                 using (var ts = new TransactionScope()) {
-
+                    var rackinfoload = ctx.Query<RackInfo>(f => f.RackNo == rackNode.No && f.Location == locationInfo.Addr && f.Loading == (int)LocationStates.LOADING).FirstOrDefault();
                     var now = DateTime.Now;
                     int i =  ctx.RackInfo
                         .Where(r => r.RackNo == rackNode.No && r.Location == locationInfo.Addr && r.Loading != (int)LocationStates.FREE)
@@ -293,6 +297,17 @@ namespace IDS.Extend.HYDevice.ReceiveHandler
                             return IdsResult<object>.failure($"设备{rackNode.No}出库的任务{taskId}，最后一个下架任务出货完成失败");
                         }
 
+                        string deleteTask = $"delete from RackTask output deleted.* into RackTaskHis where Id = '{uptasktask.Id}'";
+                        ctx.Sql(deleteTask);
+                        if (rackinfoload != null && !string.IsNullOrEmpty(rackinfoload.PPID)) {
+                            //移走物料信息
+                            string output = $"delete from MaterialInfo output deleted.* into MaterialInfoHis where PPID = '{rackinfoload?.PPID}'";
+                            int i1 = ctx.Sql(output);
+                            if (i1 == 0)
+                            {
+                                Logger.Error($"任务取消失败，物料信息归档错误,货架:{rackinfoload.RackNo},面:{rackinfoload.RackSide},PPID:{rackinfoload?.PPID}");
+                            }
+                        }
                     }
                     #region 处理发送给WMS的下架逻辑
                     var sendWms = new List<LocationInfoChangeData>

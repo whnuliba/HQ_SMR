@@ -374,7 +374,7 @@ namespace IDS.Extend.HYDevice
                                         if (f.HasValue)
                                             return f.ToString();
                                         return null;
-                                    });
+                                    }).Where(f=>!string.IsNullOrEmpty(f)).ToList();
                                     ctx.RackAlarm
                                          .Where(a => a.RackNo == rack.No && a.RackSide == _side && cancelAlarmList.Contains(a.Location) && a.HandleState == 0)
                                          .ExecuteUpdateAsync(setters => setters
