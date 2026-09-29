@@ -73,7 +73,7 @@ namespace IDS.HQ.Controller
         public ResponseEntity<Page<VMaterialInfo>> GetMarerials(Page<VMaterialInfo> page)
         {
             var res = _adapter.GetMaterialInfo(page);
-            return ResponseEntity<Page<VMaterialInfo>>.Success(page);
+            return ResponseEntity<Page<VMaterialInfo>>.Success(res);
         }
     }
 }

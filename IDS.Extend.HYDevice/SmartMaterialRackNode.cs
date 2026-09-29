@@ -26,6 +26,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Transactions;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace IDS.Extend.HYDevice
 {
@@ -36,7 +37,9 @@ namespace IDS.Extend.HYDevice
         private readonly static ConcurrentDictionary<string, RackNode> _rackNodeWithIp = new ConcurrentDictionary<string, RackNode>();
         private readonly static ConcurrentDictionary<string, RackNode> _rackNodeWithNo = new ConcurrentDictionary<string, RackNode>();
         //允许正在上架的任务
+        private readonly static ConcurrentDictionary<string,DateTime> _receiveLastTime = new ConcurrentDictionary<string, DateTime>();
         private readonly static List<int> _allowPutwayList = new();
+        private object obj = new object();
         public static SmartMaterialRackNode Instance => _instance.Value;
         private SmartMaterialRackNode() { }
         public bool AddAllowPutwayAddr(string taskId, List<int?> addrs)
@@ -76,6 +79,39 @@ namespace IDS.Extend.HYDevice
             _rackNodeWithIp.TryRemove(rackNode.IP, out _);
             _rackNodeWithNo.TryRemove(rackNode.No, out _);
         }
+
+
+        public DateTime AddLastTime(string key,DateTime dateTime)
+        {
+            _receiveLastTime.AddOrUpdate(key, dateTime, (k, ov) => dateTime);
+            return dateTime;
+        }
+        public void RemoveLastTime(string key)
+        {
+            _receiveLastTime.TryRemove(key, out _);
+        }
+
+        public void TryGetLastTime(string key,out DateTime date)
+        {
+            _receiveLastTime.TryGetValue(key, out date);
+        }
+
+        public bool HasLastTime(string key,int timeout = 1000) {
+            lock (obj) {
+                _receiveLastTime.TryGetValue(key, out DateTime date);
+                var currentTime = DateTime.Now;
+                if (date == null) {
+                    AddLastTime(key, currentTime);
+                    return false;
+                }
+                if (date.AddMilliseconds(timeout) <= currentTime) {
+                    AddLastTime(key, currentTime);
+                    return false;
+                }
+            }
+            return true;
+        }
+
         public void RemoveNode(string rackNode)
         {
             RemoveNode(GetRackNode(rackNode));
@@ -112,11 +148,13 @@ namespace IDS.Extend.HYDevice
             return exist;
         }
 
-        public virtual IdsResult<object> CancelAlarmNotice<E>(E data, IdsSession session, Action<IdsSession>? action = null) {
+        public virtual IdsResult<object> CancelAlarmNotice<E>(E data, IdsSession session, Action<IdsSession>? action = null)
+        {
 
             return IdsResult<object>.ok();
         }
-        public virtual IdsResult<object> SendAlarmNoticeSync<E>(E data, IdsSession session, Action<IdsSession>? action = null) {
+        public virtual IdsResult<object> SendAlarmNoticeSync<E>(E data, IdsSession session, Action<IdsSession>? action = null)
+        {
             IdsRedis redisClient = ContainerUtils.GetRequiredService<IdsRedis>();
             IdsRedisLock IdsRedisLock = ContainerUtils.GetRequiredService<IdsRedisLock>();
             IdsResult<object> res = IdsResult<object>.ok();
@@ -134,7 +172,7 @@ namespace IDS.Extend.HYDevice
                 rack = GetRackNode(session?.ResponseEndPoint.Address);
             }
             //同步锁的ID 更具储根据储位来
-            
+
             string lockStr = "HQ:COMMON:ALARM_LOCK:" + alarm.RackNo;
             string value = BaseUtil.uuid();
             try
@@ -144,27 +182,28 @@ namespace IDS.Extend.HYDevice
                     try
                     {
                         string fieldKey = $"{alarm.RackNo}_{_side}";
-                       // redisClient.GetDatabase().HashGet($"{HYConstant.RackAlarmRecordKey}:{fieldKey}", hashFields);
+                        // redisClient.GetDatabase().HashGet($"{HYConstant.RackAlarmRecordKey}:{fieldKey}", hashFields);
                         //检查报警是否已经存在
-                        if (alarm.AlarmMode == 0) { 
-                           
+                        if (alarm.AlarmMode == 0)
+                        {
+
                         }
                         res = SendAlarmNotice<E>(data, session, action);
                     }
                     catch (Exception ex)
                     {
-                  
+
                     }
                     finally
                     {
-                         IdsRedisLock.UnLock(lockStr, value);
+                        IdsRedisLock.UnLock(lockStr, value);
                     }
 
                 }
             }
             catch (Exception ex)
             {
-             
+
             }
             return res;
 
@@ -178,8 +217,8 @@ namespace IDS.Extend.HYDevice
             IdsRedis redisClient = ContainerUtils.GetRequiredService<IdsRedis>();
             IDbContextFactory<RackDbContext> dbContext = ContainerUtils.GetRequiredService<IDbContextFactory<RackDbContext>>();
             //
-            IdsRedisLock IdsRedisLock  = ContainerUtils.GetRequiredService<IdsRedisLock>();
-            var locs = alarm.locations.Select(c=> LocationUtils.SmrToDevice(c)).ToList(); 
+            IdsRedisLock IdsRedisLock = ContainerUtils.GetRequiredService<IdsRedisLock>();
+            var locs = alarm.locations.Select(c => LocationUtils.SmrToDevice(c)).ToList();
             var message = DeviceMessage.GetAlarm(locs, alarm.AlarmMode, alarm.LocationMode, alarm.Side);
             RackNode rack;
             if (!string.IsNullOrEmpty(alarm.RackNo))
@@ -192,8 +231,8 @@ namespace IDS.Extend.HYDevice
             }
             if (rack != null)
             {
-               //锁定发送报警信息
-               var connection = session!= null && session.ServerConnection !=null? session.ServerConnection : ServerConnectionHolder.GetDefaultConnection();
+                //锁定发送报警信息
+                var connection = session != null && session.ServerConnection != null ? session.ServerConnection : ServerConnectionHolder.GetDefaultConnection();
                 connection.Send(message, new IdsEndPoint(rack.IP, rack.Port), (session) =>
                 {
                     //按储位维度存储报警到redis，redis中每个储位维护一个报警信息。
@@ -204,7 +243,7 @@ namespace IDS.Extend.HYDevice
                     string hexNoDash = BitConverter.ToString(message).Replace("-", " ");
                     string msg = $"{DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss")}|报文[{hexNoDash}]|{alarm.ErrorInfo}";
                     //广播消息出去
-               
+
                     IdsMessageHandler<object>.ErrorMessage(msg);
                     //计算报警地址, 单储位报警
                     HashEntry[] hashFields = new HashEntry[0];
@@ -282,7 +321,7 @@ namespace IDS.Extend.HYDevice
                         {
                             Id = IdUtils.Id + "",
                             Message = $"{msg}",
-                           // AlarmType = alarm.location.Status,
+                            // AlarmType = alarm.location.Status,
                             LocationType = alarm.LocationMode,
                             RackNo = rack.No,
                             RackSide = _side,
@@ -338,65 +377,72 @@ namespace IDS.Extend.HYDevice
 
                     using (var ctx = dbContext.CreateDbContext())
                     {
-                        using (var ts = new TransactionScope())
+                        using (var transaction = ctx.Database.BeginTransaction())
                         {
-                            if (alarm.AlarmMode == 0)
+                            try
                             {
-                                //节点写入到缓存
-                                redisClient.GetDatabase().HashSet($"{HYConstant.RackAlarmRecordKey}:{fieldKey}", hashFields);
-                                var options = new BulkCopyOptions
+                                if (alarm.AlarmMode == 0)
                                 {
-                                    BulkCopyType = BulkCopyType.ProviderSpecific,
-                                    KeepIdentity = true,
-         
-                                };
-                                ctx.BulkCopy(options, rackAlarms);
-                             }
-                            if (alarm.AlarmMode == 1)
-                            {
+                                    //节点写入到缓存
+                                    redisClient.GetDatabase().HashSet($"{HYConstant.RackAlarmRecordKey}:{fieldKey}", hashFields);
+                                    var options = new BulkCopyOptions
+                                    {
+                                        BulkCopyType = BulkCopyType.ProviderSpecific,
+                                        KeepIdentity = true,
 
-                                //判断若是按面接触，则整个面的所有储位全部解除报警
-                                if (alarm.LocationMode == 2)
-                                {
-                                    ctx.RackAlarm
-                                        .Where(a => a.RackNo == rack.No && a.RackSide == _side && a.HandleState == 0)
-                                        .ExecuteUpdateAsync(setters => setters
-                                            .SetProperty(a => a.HandleState, 1)
-                                            .SetProperty(a => a.LastModifyTime, DateTime.Now)
-                                     );
-                                    redisClient.GetDatabase().KeyDelete($"{HYConstant.RackAlarmRecordKey}:{fieldKey}");
-                                    ts.Complete();
+                                    };
+                                    ctx.BulkCopy(options, rackAlarms);
                                 }
-                                else
+                                if (alarm.AlarmMode == 1)
                                 {
 
-                                    var cancelAlarmList = cancelAlarm?.Select(f => {
-                                        if (f.HasValue)
-                                            return f.ToString();
-                                        return null;
-                                    }).Where(f=>!string.IsNullOrEmpty(f)).ToList();
-                                    ctx.RackAlarm
-                                         .Where(a => a.RackNo == rack.No && a.RackSide == _side && cancelAlarmList.Contains(a.Location) && a.HandleState == 0)
-                                         .ExecuteUpdateAsync(setters => setters
-                                             .SetProperty(a => a.HandleState, 1)
-                                             .SetProperty(a => a.LastModifyTime, DateTime.Now)
-                                      );
-                                    redisClient.GetDatabase().HashDelete($"{HYConstant.RackAlarmRecordKey}:{fieldKey}", cancelAlarm);
-                                    //这里还要反向操作下，若所有储位报警都接触，则删除整个Key
-                                    var keys = redisClient.GetDatabase().HashKeys($"{HYConstant.RackAlarmRecordKey}:{fieldKey}");
-                                    if (keys != null && keys.Length == 1 && keys[0].ToString() == _side)
+                                    //判断若是按面接触，则整个面的所有储位全部解除报警
+                                    if (alarm.LocationMode == 2)
                                     {
                                         ctx.RackAlarm
-                                        .Where(a => a.RackNo == rack.No && a.RackSide == _side && a.HandleState == 0)
-                                        .ExecuteUpdateAsync(setters => setters
-                                            .SetProperty(a => a.HandleState, 1)
-                                            .SetProperty(a => a.LastModifyTime, DateTime.Now));
+                                            .Where(a => a.RackNo == rack.No && a.RackSide == _side && a.HandleState == 0)
+                                            .ExecuteUpdate(setters => setters
+                                                .SetProperty(a => a.HandleState, 1)
+                                                .SetProperty(a => a.LastModifyTime, DateTime.Now)
+                                         );
                                         redisClient.GetDatabase().KeyDelete($"{HYConstant.RackAlarmRecordKey}:{fieldKey}");
                                     }
-                                    ts.Complete();
+                                    else
+                                    {
+
+                                        var cancelAlarmList = cancelAlarm?.Select(f =>
+                                        {
+                                            if (f.HasValue)
+                                                return f.ToString();
+                                            return null;
+                                        }).Where(f => !string.IsNullOrEmpty(f)).ToList();
+                                        ctx.RackAlarm
+                                             .Where(a => a.RackNo == rack.No && a.RackSide == _side && cancelAlarmList.Contains(a.Location) && a.HandleState == 0)
+                                             .ExecuteUpdate(setters => setters
+                                                 .SetProperty(a => a.HandleState, 1)
+                                                 .SetProperty(a => a.LastModifyTime, DateTime.Now)
+                                          );
+                                        redisClient.GetDatabase().HashDelete($"{HYConstant.RackAlarmRecordKey}:{fieldKey}", cancelAlarm);
+                                        //这里还要反向操作下，若所有储位报警都接触，则删除整个Key
+                                        var keys = redisClient.GetDatabase().HashKeys($"{HYConstant.RackAlarmRecordKey}:{fieldKey}");
+                                        if (keys != null && keys.Length == 1 && keys[0].ToString() == _side)
+                                        {
+                                            ctx.RackAlarm
+                                            .Where(a => a.RackNo == rack.No && a.RackSide == _side && a.HandleState == 0)
+                                            .ExecuteUpdate(setters => setters
+                                                .SetProperty(a => a.HandleState, 1)
+                                                .SetProperty(a => a.LastModifyTime, DateTime.Now));
+                                            redisClient.GetDatabase().KeyDelete($"{HYConstant.RackAlarmRecordKey}:{fieldKey}");
+                                        }
+                                    }
                                 }
+                                transaction.Commit();
                             }
-                
+                            catch (Exception ex)
+                            {
+                                transaction.Rollback();
+                                throw;
+                            }
                         }
                     }
                 });
@@ -462,7 +508,7 @@ namespace IDS.Extend.HYDevice
             {
                 var rack = GetRackNode(rackNo);
                 var result = OnLight.GroupBy(kvp => kvp.Value)
-                    .ToDictionary(g => g.Key, g => g.Where(f => f.Key != null).Select(kvp =>LocationUtils.SmrToDevice(kvp.Key)).ToList());
+                    .ToDictionary(g => g.Key, g => g.Where(f => f.Key != null).Select(kvp => LocationUtils.SmrToDevice(kvp.Key)).ToList());
                 //这个地方取决于要发多少总颜色的灯信息
                 foreach (var kvp in result)
                 {

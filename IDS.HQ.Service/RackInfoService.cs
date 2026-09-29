@@ -113,32 +113,38 @@ namespace IDS.HQ.Service
                 }
                 using (var ctx = DbContext())
                 {
-                    using (var ts = new TransactionScope())
+                    using (var ts =ctx.Database.BeginTransaction())
                     {
-                        var options = new BulkCopyOptions
-                        {
-                            // 明确指定使用最高效的原生批量复制方式
-                            BulkCopyType = BulkCopyType.ProviderSpecific,
-                            // 可选：如果表有自增列，但你想插入自己的值
-                            KeepIdentity = true,
-                            // 可选：设置超时时间
-                            //BulkCopyTimeout = 120
-                        };
- 
-                        ctx.Insert(rackNode);
-                        ctx.BulkCopy(options, rackinfos);
-                        //节点写入到缓存
-                        RedisClient.GetDatabase().HashSet(_rackNodeCacheKey, rackInfo.IP,JsonConvert.SerializeObject(rackNode));
+                        try {
+                            var options = new BulkCopyOptions
+                            {
+                                // 明确指定使用最高效的原生批量复制方式
+                                BulkCopyType = BulkCopyType.ProviderSpecific,
+                                // 可选：如果表有自增列，但你想插入自己的值
+                                KeepIdentity = true,
+                                // 可选：设置超时时间
+                                //BulkCopyTimeout = 120
+                            };
 
-                        var node = new RackNode
-                        {
-                            No = rackInfo.RackNo,
-                            IP = rackInfo.IP,
-                            Port = (ushort)rackInfo.Port,
-                            Enabled = "Y",
-                        };
-                        SmartMaterialRackNode.Instance.AddNode(node);
-                        ts.Complete();
+                            ctx.Insert(rackNode);
+                            ctx.BulkCopy(options, rackinfos);
+                            //节点写入到缓存
+                            RedisClient.GetDatabase().HashSet(_rackNodeCacheKey, rackInfo.IP, JsonConvert.SerializeObject(rackNode));
+
+                            var node = new RackNode
+                            {
+                                No = rackInfo.RackNo,
+                                IP = rackInfo.IP,
+                                Port = (ushort)rackInfo.Port,
+                                Enabled = "Y",
+                            };
+                            SmartMaterialRackNode.Instance.AddNode(node);
+                            ts.Commit();
+                        } catch {
+                            ts.Rollback();
+                            throw;
+                        }
+                       
                     }
 
                 }

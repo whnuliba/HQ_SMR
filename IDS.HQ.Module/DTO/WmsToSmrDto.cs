@@ -18,7 +18,7 @@ namespace IDS.HQ.Module.DTO
         /// 
         [JsonPropertyName("OperateType")]
         [JsonProperty("OperateType")]
-        public string OperateType { get; set; }
+        public string? OperateType { get; set; }
 
         /// <summary>
         /// "Up"=请求上架命令；"Up_end"=请求上架结束

@@ -109,7 +109,7 @@ namespace IDS.HQ.Service
                 materialInfo.saveInit();
                 materialInfo.Id = IdUtils.Id + "";
                 materialInfo.TaskId = rackTask.Id;
-                using (var ts = new TransactionScope())
+                using (var ts = ctx.Database.BeginTransaction())
                 {
                     try
                     {
@@ -119,11 +119,13 @@ namespace IDS.HQ.Service
                         int i = ctx.Insert(rackTask);
                         if (i == 0)
                         {
+                            ts.Rollback();
                             return IdsResult<RackTask>.failure($"保存上架任务失败,货架{rackTask.RackNo},面{rackTask.RackSide}");
                         }
                         i = ctx.Insert(materialInfo);
                         if (i == 0)
                         {
+                            ts.Rollback();
                             return IdsResult<RackTask>.failure($"保存上架任务失败,货架{rackTask.RackNo},面{rackTask.RackSide}");
                         }
                         //处理亮灯问题。
@@ -147,10 +149,11 @@ namespace IDS.HQ.Service
                         Logger.Info(string.Format("创建任务完成{0},{1}", HYConstant.CheckPutwayKey + rackTask.RackNo + ":" + rackTask.RackSide, locTaskStr));
                         RedisClient.GetDatabase().StringSet(HYConstant.CheckPutwayKey + rackTask.RackNo + ":" + rackTask.RackSide, locTaskStr,TimeSpan.FromHours(2));
                         // SmartMaterialRackNode.Instance.AddAllowPutwayAddr(id+"", allowLight.ToList());
-                        ts.Complete();
+                        ts.Commit();
                     }
                     catch (Exception ex)
                     {
+                        ts.Rollback();
                         return IdsResult<RackTask>.failure(ex.Message);
                     }
                 }
@@ -234,28 +237,33 @@ namespace IDS.HQ.Service
                     allowDowns.Add(rack.Location ?? -1);
                 }
 
-                using (var ts = new TransactionScope())
+                if (light != null && light.Count >0)
                 {
-                    try
+                    using (var ts = ctx.Database.BeginTransaction())
                     {
-                        rackTask.TaskState = (int)TaskStates.DOWN_WAIT;
-                        rackTask.TaskType = (int)TaskTypes.OUT;
-                        rackTask.saveInit();
-                        ctx.Insert(rackTask);
-                        //存入到redis
+                        try
+                        {
+                            rackTask.TaskState = (int)TaskStates.DOWN_WAIT;
+                            rackTask.TaskType = (int)TaskTypes.OUT;
+                            rackTask.saveInit();
+                            ctx.Insert(rackTask);
+                            //存入到redis
 
-                        RedisClient.GetDatabase().HashSet(_checkOutboundKey + rackTask.RackNo, hashFields);
-                        Dictionary<int, byte>? dic = allowDowns.ToDictionary(k => k, v => (byte)LightColor.Red);
-                        //发送亮灯信息
-                        SmartMaterialRackNode.Instance.NoticeRackMultiLightOn(rackTask.RackNo, dic);
-                        ts.Complete();
-                    }
-                    catch (Exception ex)
-                    {
-                        return IdsResult<RackTask>.failure(ex.Message);
-                    }
+                            RedisClient.GetDatabase().HashSet(_checkOutboundKey + rackTask.RackNo, hashFields);
+                            Dictionary<int, byte>? dic = allowDowns.ToDictionary(k => k, v => (byte)LightColor.Red);
+                            //发送亮灯信息
+                            SmartMaterialRackNode.Instance.NoticeRackMultiLightOn(rackTask.RackNo, dic);
+                            ts.Commit();
+                        }
+                        catch (Exception ex)
+                        {
+                            ts.Rollback();
+                            return IdsResult<RackTask>.failure(ex.Message);
+                        }
 
+                    }
                 }
+      
             }
             //处理任务创建
             var res = IdsResult<RackTask>.ok(rackTask);
@@ -328,7 +336,7 @@ namespace IDS.HQ.Service
             using (var ctx = DbContext())
             {
 
-                using (var ts = new TransactionScope())
+                using (var ts = ctx.Database.BeginTransaction())
                 {
                     try
                     {
@@ -338,10 +346,11 @@ namespace IDS.HQ.Service
                         //存入到redis
                         RedisClient.GetDatabase().SetAdd(_checkOutboundAddrKey + rackTask.RackNo + ":" + rackTask.Id, redisValues);
                         RedisClient.GetDatabase().SetAdd(_checkOutboundKey + rackTask.RackNo, rackTask.Id);
-                        ts.Complete();
+                        ts.Commit();
                     }
                     catch (Exception ex)
                     {
+                        ts.Rollback();
                         return IdsResult<RackTask>.failure(ex.Message);
                     }
 
@@ -410,26 +419,35 @@ namespace IDS.HQ.Service
             }
             using (var ctx = DbContext())
             {
-                using (var ts = new TransactionScope())
+                using (var ts =ctx.Database.BeginTransaction())
                 {
-                    var task = (from rt in ctx.RackTask
-                                where rt.RackNo == rackTask.RackNo
-                                && rt.RackSide == rackTask.RackSide
-                                && rt.TaskState == (int)TaskStates.DOWN_WAIT
-                                select rt).FirstOrDefault();
-                    if (task != null)
+                    try
                     {
-                        var cancelTask = new RackCancelTask();
-                        ObjectExtensions.CopyProperties(task, cancelTask);
-                        cancelTask.Id = IdUtils.Id + "";
-                        cancelTask.SourceId = task.Id;
-                        cancelTask.updateInit();
-                        ctx.Insert(cancelTask);
-                        ctx.Remove(task);
-                        ctx.SaveChanges();
-                        SmartMaterialRackNode.Instance.NoticeRackMultiLightOff(rackTask.RackNo, ligthAddrs);
-                        ts.Complete();
+                        var task = (from rt in ctx.RackTask
+                                    where rt.RackNo == rackTask.RackNo
+                                    && rt.RackSide == rackTask.RackSide
+                                    && rt.TaskState == (int)TaskStates.DOWN_WAIT
+                                    select rt).FirstOrDefault();
+                        if (task != null)
+                        {
+                            var cancelTask = new RackCancelTask();
+                            ObjectExtensions.CopyProperties(task, cancelTask);
+                            cancelTask.Id = IdUtils.Id + "";
+                            cancelTask.SourceId = task.Id;
+                            cancelTask.updateInit();
+                            ctx.Insert(cancelTask);
+                            ctx.Remove(task);
+                            ctx.SaveChanges();
+                            SmartMaterialRackNode.Instance.NoticeRackMultiLightOff(rackTask.RackNo, ligthAddrs);
+
+                        }
+                        ts.Commit();
                     }
+                    catch (Exception ex) {
+                        ts.Rollback();
+                        throw;
+                    }
+         
                 }
 
                 RedisClient.GetDatabase().HashDelete(_checkOutboundKey + rackTask.RackNo, hashFields);
@@ -450,48 +468,58 @@ namespace IDS.HQ.Service
             }
             using (var ctx = DbContext())
             {
-                using (var ts = new TransactionScope())
+                using (var ts = ctx.Database.BeginTransaction())
                 {
-                    var task = (from rt in ctx.RackTask
-                                where rt.RackNo == rackTask.RackNo
-                                && rt.RackSide == rackTask.RackSide
-                                && rt.TaskState == (int)TaskStates.UP_WAIT
-                                select rt).FirstOrDefault();
-                    if (task != null)
-                    {
-                        var cancelTask = new RackCancelTask();
-                        ObjectExtensions.CopyProperties(task, cancelTask);
-                        cancelTask.Id = IdUtils.Id + "";
-                        cancelTask.SourceId = task.Id;
-                        cancelTask.updateInit();
-                        ctx.Insert(cancelTask);
-                        ctx.Remove(task);
-                        ctx.SaveChanges();
-                        string output = $"delete from MaterialInfo output deleted.* into MaterialInfoCancel where TaskId = '{task.Id}'";
-                        int i  =ctx.Sql(output);
-                        if (i == 0) {
-                            Logger.Error($"任务取消失败，物料信息归档错误,货架:{rackTask.RackNo},面:{rackTask.RackSide},任务号:{task.Id}");
-                            throw new BussinessException($"任务取消失败，物料信息归档错误,货架:{rackTask.RackNo},面:{rackTask.RackSide},任务号:{task.Id}");
-                        }
-                        //检查当前位置信息是空的货架
-                        List<int?> allowLight = (from light in ctx.RackInfo
-                                                 where light.RackNo == rackTask.RackNo
-                                                 && light.RackSide == rackTask.RackSide
-                                                 && light.Loading == (int)LocationStates.FREE
-                                                 select light.Location).ToList();
-                        List<int> onlight = new List<int>();
-                        allowLight.ForEach(item =>
+                    try {
+
+                        var task = (from rt in ctx.RackTask
+                                    where rt.RackNo == rackTask.RackNo
+                                    && rt.RackSide == rackTask.RackSide
+                                    && rt.TaskState == (int)TaskStates.UP_WAIT
+                                    select rt).FirstOrDefault();
+                        if (task != null)
                         {
-                            if (item != null)
-                                onlight.Add(item ?? 0);
-                        });
-                        //先亮绿灯吧？后续按照需求规格来设置颜色
-                        if (allowLight != null && allowLight.Count > 0)
-                        {
-                            SmartMaterialRackNode.Instance.NoticeRackMultiLightOff(rackTask.RackNo, onlight);
+                            var cancelTask = new RackCancelTask();
+                            ObjectExtensions.CopyProperties(task, cancelTask);
+                            cancelTask.Id = IdUtils.Id + "";
+                            cancelTask.SourceId = task.Id;
+                            cancelTask.updateInit();
+                            ctx.Insert(cancelTask);
+                            ctx.Remove(task);
+                            ctx.SaveChanges();
+                            var matl = ctx.Query<MaterialInfo>(f => f.TaskId == task.Id).FirstOrDefault();
+                            var matlHis = new MaterialInfoHis();
+                            ObjectExtensions.CopyProperties(matl, matlHis);
+                            int i = ctx.Insert(matlHis);
+                            if (i == 0)
+                            {
+                                Logger.Error($"任务取消失败，物料信息归档错误,货架:{rackTask.RackNo},面:{rackTask.RackSide},任务号:{task.Id}");
+                                throw new BussinessException($"任务取消失败，物料信息归档错误,货架:{rackTask.RackNo},面:{rackTask.RackSide},任务号:{task.Id}");
+                            }
+                            //检查当前位置信息是空的货架
+                            List<int?> allowLight = (from light in ctx.RackInfo
+                                                     where light.RackNo == rackTask.RackNo
+                                                     && light.RackSide == rackTask.RackSide
+                                                     && light.Loading == (int)LocationStates.FREE
+                                                     select light.Location).ToList();
+                            List<int> onlight = new List<int>();
+                            allowLight.ForEach(item =>
+                            {
+                                if (item != null)
+                                    onlight.Add(item ?? 0);
+                            });
+                            //先亮绿灯吧？后续按照需求规格来设置颜色
+                            if (allowLight != null && allowLight.Count > 0)
+                            {
+                                SmartMaterialRackNode.Instance.NoticeRackMultiLightOff(rackTask.RackNo, onlight);
+                            }
+                            ts.Commit();
                         }
-                        ts.Complete();
+                    } catch (Exception ex) {
+                        ts.Commit();
+                        throw;
                     }
+                 
                 }
 
                 string token = RedisClient.GetDatabase().StringGet(HYConstant.CheckPutwayKey + rackTask.RackNo + ":" + rackTask.RackSide);
@@ -625,50 +653,57 @@ namespace IDS.HQ.Service
             }
             using (var ctx = DbContext())
             {
-                using (var ts = new TransactionScope())
+                using (var ts =ctx.Database.BeginTransaction())
                 {
-                    var task = (from rt in ctx.RackTask
-                                where rt.RackNo == rackTask.RackNo
-                                && rt.RackSide == rackTask.RackSide
-                                && rt.TaskState == (int)TaskStates.DOWN_WAIT
-                                select rt).FirstOrDefault();
-                    if (task != null)
-                    {
-
-                        //完成任务
-                        task.updateInit();
-                        task.updateInit();
-                        task.TaskState = (int)TaskStates.DOWN_COMPLETE;
-                        ctx.Entry(task).Property(p => p.LastModifyTime).IsModified = true;
-                        ctx.Entry(task).Property(p => p.LastModifyUser).IsModified = true;
-                        ctx.Entry(task).Property(p => p.TaskState).IsModified = true;
-                        ctx.SaveChanges();
-                        //获取当前货架的所有储位信息，对PPID进行转移归档
-                        var rackinfoPPID = ctx.RackInfo.Where(f => f.RackNo == rackTask.RackNo && completeDoc.Contains(f.Location)).Select(c=>c.PPID).ToList();
-                        int i = ctx.RackInfo
-                            .Where(r => r.RackNo == task.RackNo && completeDoc.Contains(r.Location))
-                            .ExecuteUpdate(setters => setters
-                                .SetProperty(r => r.LastModifyTime, DateTime.Now)
-                                .SetProperty(r => r.Loading, (int)LocationStates.FREE)
-                                   .SetProperty(r => r.PPID, string.Empty)
-                            );
-                        //进行归档处理
-                        string deleteTask = $"delete from RackTask output deleted.* into RackTaskHis where Id = '{task.Id}'";
-                        ctx.Sql(deleteTask);
-                        if (rackinfoPPID != null && rackinfoPPID.Count>0)
+                    try {
+                        var task = (from rt in ctx.RackTask
+                                    where rt.RackNo == rackTask.RackNo
+                                    && rt.RackSide == rackTask.RackSide
+                                    && rt.TaskState == (int)TaskStates.DOWN_WAIT
+                                    select rt).FirstOrDefault();
+                        if (task != null)
                         {
-                            string ppid = string.Join("','", rackinfoPPID);
-                            //移走物料信息
-                            string output = $"delete from MaterialInfo output deleted.* into MaterialInfoHis where PPID in ('{ppid}')";
-                            int i1 = ctx.Sql(output);
-                            if (i1 == 0)
+
+                            //完成任务
+                            task.updateInit();
+                            task.updateInit();
+                            task.TaskState = (int)TaskStates.DOWN_COMPLETE;
+                            ctx.Entry(task).Property(p => p.LastModifyTime).IsModified = true;
+                            ctx.Entry(task).Property(p => p.LastModifyUser).IsModified = true;
+                            ctx.Entry(task).Property(p => p.TaskState).IsModified = true;
+                            ctx.SaveChanges();
+                            //获取当前货架的所有储位信息，对PPID进行转移归档
+                            var rackinfoPPID = ctx.RackInfo.Where(f => f.RackNo == rackTask.RackNo && completeDoc.Contains(f.Location)).Select(c => c.PPID).ToList();
+                            int i = ctx.RackInfo
+                                .Where(r => r.RackNo == task.RackNo && completeDoc.Contains(r.Location))
+                                .ExecuteUpdate(setters => setters
+                                    .SetProperty(r => r.LastModifyTime, DateTime.Now)
+                                    .SetProperty(r => r.Loading, (int)LocationStates.FREE)
+                                       .SetProperty(r => r.PPID, string.Empty)
+                                );
+                            //进行归档处理
+                            if (rackinfoPPID != null && rackinfoPPID.Count > 0)
                             {
-                                Logger.Error($"任务取消失败，物料信息归档错误,货架,PPID:{ppid}");
+                                string ppid = string.Join("','", rackinfoPPID);
+                                var matls = ctx.Query<MaterialInfo>(f => rackinfoPPID.Contains(f.PPID)).ToList();
+                                var matHiss = matls.Select(f =>
+                                {
+                                    var matHis = new MaterialInfoHis();
+                                    ObjectExtensions.CopyProperties(f, matHis);
+                                    return matHis;
+                                }).ToList();
+
+                                ctx.InsertRange(matHiss);
                             }
+
+                            RedisClient.GetDatabase().HashDelete(_checkOutboundKey + rackTask.RackNo, hashFields);
+                            ts.Commit();
                         }
-                        RedisClient.GetDatabase().HashDelete(_checkOutboundKey + rackTask.RackNo, hashFields);
-                        ts.Complete();
+                    } catch {
+                        ts.Rollback();
+                        throw;
                     }
+             
                 }
             }
             return IdsResult<RackTask>.ok();
@@ -711,31 +746,38 @@ namespace IDS.HQ.Service
                 {
                     return IdsResult<RackTask>.failure($"货架{rackTask.RackNo}-{rackTask.Id}-位置{rackTask.Location}是载货状态及PPID不一致，不可强制");
                 }
-                using (var ts = new TransactionScope())
+                using (var ts = ctx.Database.BeginTransaction())
                 {
-                    //修改货架指定的任务号
-                    task.updateInit();
-                    task.TaskState = (int)TaskStates.UP_COMPLETE;
-                    ctx.Entry(task).Property(p => p.LastModifyTime).IsModified = true;
-                    ctx.Entry(task).Property(p => p.LastModifyUser).IsModified = true;
-                    ctx.Entry(task).Property(p => p.TaskState).IsModified = true;
-                    ctx.SaveChanges();
-                    if (isAlowComplete && rackinfo.Loading == (int)LocationStates.FREE)
-                    {
-                        rackinfo.Loading = (int)LocationStates.FREE;
-                        rackinfo.PPID = task.PPID;
-                        ctx.Entry(rackinfo).Property(p => p.LastModifyTime).IsModified = true;
-                        ctx.Entry(rackinfo).Property(p => p.LastModifyUser).IsModified = true;
-                        ctx.Entry(rackinfo).Property(p => p.Loading).IsModified = true;
-                        ctx.Entry(rackinfo).Property(p => p.PPID).IsModified = true;
+                    try {
+                        //修改货架指定的任务号
+                        task.updateInit();
+                        task.TaskState = (int)TaskStates.UP_COMPLETE;
+                        ctx.Entry(task).Property(p => p.LastModifyTime).IsModified = true;
+                        ctx.Entry(task).Property(p => p.LastModifyUser).IsModified = true;
+                        ctx.Entry(task).Property(p => p.TaskState).IsModified = true;
                         ctx.SaveChanges();
+                        if (isAlowComplete && rackinfo.Loading == (int)LocationStates.FREE)
+                        {
+                            rackinfo.Loading = (int)LocationStates.FREE;
+                            rackinfo.PPID = task.PPID;
+                            ctx.Entry(rackinfo).Property(p => p.LastModifyTime).IsModified = true;
+                            ctx.Entry(rackinfo).Property(p => p.LastModifyUser).IsModified = true;
+                            ctx.Entry(rackinfo).Property(p => p.Loading).IsModified = true;
+                            ctx.Entry(rackinfo).Property(p => p.PPID).IsModified = true;
+                            ctx.SaveChanges();
+                        }
+                        var taskHis = new RackTaskHis();
+                        ObjectExtensions.CopyProperties(task, taskHis);
+                        taskHis.Id = IdUtils.Id + "";
+                        taskHis.SourceId = task.Id;
+                        ctx.Insert(taskHis);
+                        RedisClient.GetDatabase().KeyDelete(HYConstant.CheckPutwayKey + rackTask.RackNo + ":" + rackTask.RackSide);
+                        ts.Commit();
+                    } catch {
+                        ts.Rollback();
+                        throw;
                     }
-
-                    string deleteTask = $"delete from RackTask output deleted.* into RackTaskHis where Id = '{task.Id}'";
-                    ctx.Sql(deleteTask);
-
-                    RedisClient.GetDatabase().KeyDelete(HYConstant.CheckPutwayKey + rackTask.RackNo + ":" + rackTask.RackSide);
-                    ts.Complete();
+                 
                 }
 
                 return IdsResult<RackTask>.ok();

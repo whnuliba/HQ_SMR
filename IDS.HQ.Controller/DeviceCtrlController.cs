@@ -145,7 +145,7 @@ namespace IDS.HQ.Controller
             if (!RequestData<LightSingleRequest>.isRequest(data))
                 return ResponseEntity<object>.Error("请传入合法参数");
 
-            byte[] message = DeviceMessage.GetSingleLightOnMessage(data.data.LedAddr, data.data.Color);
+            byte[] message = DeviceMessage.GetSingleLightOnMessage(LocationUtils.SmrToDevice(data.data.LedAddr), data.data.Color);
             SmartMaterialRackNode.Instance.NoticeRack(data.data.RackNo, message);
             return ResponseEntity<object>.Success("ok");
         }
