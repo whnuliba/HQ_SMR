@@ -152,6 +152,7 @@ namespace IDS.Extend.HYDevice.ReceiveHandler
                 using (var ts = new TransactionScope()) {
                     rackinfoload.PPID = uptasktask.PPID;
                     rackinfoload.Loading = (int)LocationStates.LOADING;
+                    rackinfoload.updateInit();
                     ctx.RackInfo.Attach(rackinfoload);
                     //ctx.Entry(rackinfoload).State = EntityState.Modified;
                     ctx.Entry(rackinfoload).Property(p => p.LastModifyTime).IsModified = true;

@@ -1,8 +1,11 @@
-﻿using IDS.Common;
+﻿using IDS.Base;
+using IDS.Common;
 using IDS.HQ.Module;
+using IDS.HQ.Module.DTO;
 using IDS.Persistence;
 using System;
 using System.Collections.Generic;
+using System.Linq.Expressions;
 using System.Text;
 
 namespace IDS.HQ.Service.IService
@@ -23,5 +26,7 @@ namespace IDS.HQ.Service.IService
         /// 根据PPID获取物料信息
         /// </summary>
         public IdsResult<MaterialInfo> GetByPPID(string ppid);
+
+        public Page<VMaterialInfo> GetMaterialInfo(Page<VMaterialInfo> page, Expression<Func<VMaterialInfo, bool>> predicate);
     }
 }

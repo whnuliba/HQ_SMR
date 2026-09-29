@@ -77,7 +77,7 @@ public partial class RackDbContext : IDSContext
     public virtual DbSet<DispatchMessage> DispatchMessage { get; set; }
     public virtual DbSet<RackRunningLog> RackRunningLog { get; set; }
     public virtual DbSet<RackAlarm> RackAlarm { get; set; }
-    
+    public virtual DbSet<VMaterialInfo> VMaterialInfo { get; set; }
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         switch (_dbType.ToLower())
