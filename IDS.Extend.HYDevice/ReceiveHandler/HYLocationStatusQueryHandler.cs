@@ -15,7 +15,7 @@ namespace IDS.Extend.HYDevice.ReceiveHandler
     /// </summary>
     public class HYLocationStatusQueryHandler : MessageHandler
     {
-        public override string ReceiveKey { get; set; } = "0x11";
+        public override string ReceiveKey { get; set; } = "0x10";
 
         public override IdsResult<object> Handle<E>(byte[] data, IdsSession session, DeviceCommand<E> command)
         {
