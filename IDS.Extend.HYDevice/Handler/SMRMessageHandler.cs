@@ -45,13 +45,17 @@ namespace IDS.Extend.HYDevice.Handler
                 }
                 var session  = SessionContext.Instance.GetSession(value);
                 //有请求的Session
+                //拿到session后需要清除缓存
+                if (session != null) {
+                    SessionContext.Instance.RemoveSession(session);
+                }
                 bool isRequest = true;
                 if (session == null) {
                     isRequest = false;
                     //若不存在就自己创建一个呆SessionKey的
                     byte[] key = new byte[10];
                     Array.Copy(dataArray, 1, key, 0, 10);
-                    session = SessionContext.Instance.CreateSession(value, serverConnection, dataArray);
+                    session = IdsSession.CreateSession(value, serverConnection, dataArray);
                     session.SessionKey = key;
                 }
                 //处理Session
