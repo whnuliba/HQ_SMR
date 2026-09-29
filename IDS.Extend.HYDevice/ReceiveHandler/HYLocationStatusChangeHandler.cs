@@ -287,6 +287,22 @@ namespace IDS.Extend.HYDevice.ReceiveHandler
 
                             // 如果需要校验受影响行数，可用 ChangeTracker 或重新查询确认
                         }
+
+                        #region 处理发送给WMS的下架逻辑
+                        var sendWms = new List<LocationInfoChangeData>
+                            {
+                                new LocationInfoChangeData{
+                                 OperateType = "Down",
+                                 PpId = rackinfoload.PPID,
+                                 LedId = locationInfo.Addr+"",
+                                 IsLegal = 1+"",
+                                 RackId = rackinfoload.RackNo,
+                                 Status = 0+"", //状态：1-上架，0-下架
+                                 TimeStamp = DateTime.UtcNow.ToString(),
+                                }
+                            };
+                        TaskReturnWmsDispatchHandler.Instance.SendLocationInfoChange<LocationInfoChangeData>(sendWms, IdUtils.Id+"");
+                        #endregion
                         transaction.Commit();
 
                     }
