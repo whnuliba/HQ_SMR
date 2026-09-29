@@ -94,7 +94,8 @@ public partial class Program
             c.KeepAliveInterval = TimeSpan.FromSeconds(60);
             //c.ReceiveBufferSize = 1024 * 2;
         });
-
+        // 注册为 HostedService，随应用启动/停止
+        builder.Services.AddHostedService<RackAlarmNotice>();
         var app = builder.Build();
         app.UseWebSockets();
         // Configure the HTTP request pipeline.

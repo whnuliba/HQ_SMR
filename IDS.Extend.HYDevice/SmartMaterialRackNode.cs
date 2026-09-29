@@ -127,6 +127,10 @@ namespace IDS.Extend.HYDevice
                 return node;
             return node;
         }
+
+        public ConcurrentDictionary<string, RackNode> GetAllRackNode() { 
+          return _rackNodeWithNo;
+        }
         /// <summary>
         /// 报警与接触报警的公共方法
         /// </summary>
