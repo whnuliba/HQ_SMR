@@ -16,7 +16,7 @@ namespace IDS.HQ.Service.Job
         private readonly IDbContextFactory<RackDbContext> _dbContext;
         private readonly IdsRedis _idsRedis;
 
-        public CleanRackAlarm(IDbContextFactory<RackDbContext> dbContext,ILogger<CleanRackAlarm> logger, IdsRedis redis) : base(logger, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1)) {
+        public CleanRackAlarm(IDbContextFactory<RackDbContext> dbContext,ILogger<CleanRackAlarm> logger, IdsRedis redis) : base(logger, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1800)) {
             _dbContext = dbContext;
             _idsRedis = redis;
         }
