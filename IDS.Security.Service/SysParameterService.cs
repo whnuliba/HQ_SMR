@@ -143,7 +143,7 @@ namespace IDS.Security.Service
             return base.save(record, properites);
         }
 
-        public override Page<SysParamter> List(Page<SysParamter> page, Expression<Func<SysParamter, bool>> predicate)
+        public override Page<SysParamter> List(Page<SysParamter> page, Expression<Func<SysParamter, bool>> predicate, Expression<Func<SysParamter, bool>> orderby = null, Expression<Func<SysParamter, bool>> orderBydesc = null)
         {
 
 

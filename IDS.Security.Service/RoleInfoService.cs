@@ -618,7 +618,7 @@ namespace IDS.Security.Service
             }
             return base.save(record, properites);
         }
-        public override Page<RoleInfo> List(Page<RoleInfo> page, Expression<Func<RoleInfo, bool>> predicate)
+        public override Page<RoleInfo> List(Page<RoleInfo> page, Expression<Func<RoleInfo, bool>> predicate, Expression<Func<RoleInfo, bool>> orderby = null, Expression<Func<RoleInfo, bool>> orderBydesc = null)
         {
             using (var ctx = DbContext())
             {

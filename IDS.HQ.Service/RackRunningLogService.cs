@@ -89,7 +89,7 @@ namespace IDS.HQ.Service
             }
         }
 
-        public override Page<RackRunningLog> List(Page<RackRunningLog> page, Expression<Func<RackRunningLog, bool>> predicate)
+        public override Page<RackRunningLog> List(Page<RackRunningLog> page, Expression<Func<RackRunningLog, bool>> predicate, Expression<Func<RackRunningLog, bool>> orderby = null, Expression<Func<RackRunningLog, bool>> orderBydesc = null)
         {
             var upload = page.requestData ?? new RackRunningLog();
 

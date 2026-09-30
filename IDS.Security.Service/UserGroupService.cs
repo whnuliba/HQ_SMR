@@ -83,7 +83,7 @@ namespace IDS.Security.Service
                 }
 
 
-        public override Page<UserGroup> List(Page<UserGroup> page, Expression<Func<UserGroup, bool>> predicate)
+        public override Page<UserGroup> List(Page<UserGroup> page, Expression<Func<UserGroup, bool>> predicate, Expression<Func<UserGroup, bool>> orderby = null, Expression<Func<UserGroup, bool>> orderBydesc = null)
         {
             String currusername = CurrentUser.GetUserInfo()?.UserName;
             if (string.IsNullOrEmpty(currusername)) throw new BussinessException("当前用户未登陆");

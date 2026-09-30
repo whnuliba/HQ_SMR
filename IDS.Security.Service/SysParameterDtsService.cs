@@ -88,7 +88,7 @@ namespace IDS.Security.Service
             }
         }
 
-        public override Page<SysParameterDts> List(Page<SysParameterDts> page, Expression<Func<SysParameterDts, bool>> predicate)
+        public override Page<SysParameterDts> List(Page<SysParameterDts> page, Expression<Func<SysParameterDts, bool>> predicate, Expression<Func<SysParameterDts, bool>> orderby = null, Expression<Func<SysParameterDts, bool>> orderBydesc = null)
         {
             if (page.requestData == null)
                 throw new BussinessException("查询菜单明细不能为空");

@@ -16,7 +16,7 @@ namespace IDS.Persistence
         T QueryById(string id);
         int update(T record, string? [] properites = null);
         Page<T> GetPage(string tableName, string where, string orderBy, int pageIndex, int pageSize);
-        Page<T> List(Page<T> page, Expression<Func<T, bool>> predicate);
-        Task<Page<T>> ListAsync(Page<T> page, Expression<Func<T, bool>> predicate);
+        Page<T> List(Page<T> page, Expression<Func<T, bool>> predicate, Expression<Func<T, bool>> orderby = null, Expression<Func<T, bool>> orderBydesc = null);
+        Task<Page<T>> ListAsync(Page<T> page, Expression<Func<T, bool>> predicate, Expression<Func<T, bool>> orderby = null, Expression<Func<T, bool>> orderBydesc = null);
     }
 }

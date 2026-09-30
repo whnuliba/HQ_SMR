@@ -77,26 +77,43 @@ namespace IDS.Persistence
             };
         }
 
-        public virtual Page<T> List(Page<T> page, Expression<Func<T, bool>> predicate)
+        public virtual Page<T> List(Page<T> page, Expression<Func<T, bool>> predicate, Expression<Func<T, bool>> orderby = null, Expression<Func<T, bool>> orderBydesc = null)
         {
             using (var ctx = DbContext())
             {
                 var req = page.requestData;
-                var data =  ctx.Query<T>(predicate).Skip((page.current-1)*page.pageSize).Take(page.pageSize).ToList();
+                var data =  ctx.Query<T>(predicate).Skip((page.current-1)*page.pageSize).Take(page.pageSize);
+                if (orderby != null)
+                {
+                    data = data.OrderBy(orderby);
+                }
+                if (orderBydesc != null)
+                {
+                    data = data.OrderByDescending(orderBydesc);
+                }
+                var list = data.ToList();
                 var count = ctx.Count<T>(predicate);
-                Page<T> page1 = new Page<T>(count, data, page.pageSize, page.current);
+                Page<T> page1 = new Page<T>(count, list, page.pageSize, page.current);
                 return page1;
             }
         }
 
-        public async Task<Page<T>> ListAsync(Page<T> page, Expression<Func<T, bool>> predicate)
+        public async Task<Page<T>> ListAsync(Page<T> page, Expression<Func<T, bool>> predicate, Expression<Func<T, bool>> orderby=null, Expression<Func<T, bool>> orderBydesc = null)
         {
             using (var ctx = DbContext())
             {
                 var req = page.requestData;
-                var data = ctx.Query<T>(predicate).Skip((page.current - 1) * page.pageSize).Take(page.pageSize).ToList();
+                var data = ctx.Query<T>(predicate).Skip((page.current - 1) * page.pageSize).Take(page.pageSize);
+                if (orderby != null) {
+                    data = data.OrderBy(orderby);
+                }
+                if (orderBydesc != null)
+                {
+                    data = data.OrderByDescending(orderBydesc);
+                }
+                var list =  data.ToList();
                 var count = ctx.Count<T>(predicate);
-                Page<T> page1 = new Page<T>(count, data, page.pageSize, page.current);
+                Page<T> page1 = new Page<T>(count, list, page.pageSize, page.current);
                 return page1;
             }
         }

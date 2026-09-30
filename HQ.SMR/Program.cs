@@ -5,6 +5,7 @@ using IDS.Common;
 using IDS.Device.Communication;
 using IDS.Extend.HYDevice;
 using IDS.HQ.Module;
+using IDS.HQ.Service.Job;
 using IDS.Ioc;
 using IDS.Persistence;
 using IDS.SMR.Bootstrap;
@@ -96,6 +97,7 @@ public partial class Program
         });
         // 注册为 HostedService，随应用启动/停止
         builder.Services.AddHostedService<RackAlarmNotice>();
+        builder.Services.AddHostedService<CleanRackAlarm>();   
         var app = builder.Build();
         app.UseWebSockets();
         // Configure the HTTP request pipeline.

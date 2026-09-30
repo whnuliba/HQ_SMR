@@ -11,6 +11,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq.Expressions;
 using System.Text;
+using static LinqToDB.Reflection.Methods.LinqToDB.Insert;
 
 namespace IDS.HQ.Service
 {
@@ -78,7 +79,7 @@ namespace IDS.HQ.Service
             }
         }
 
-        public override Page<MaterialInfo> List(Page<MaterialInfo> page, Expression<Func<MaterialInfo, bool>> predicate)
+        public override Page<MaterialInfo> List(Page<MaterialInfo> page, Expression<Func<MaterialInfo, bool>> predicate, Expression<Func<MaterialInfo, bool>> orderby = null, Expression<Func<MaterialInfo, bool>> orderBydesc = null)
         {
             var upload = page.requestData ?? new MaterialInfo();
 

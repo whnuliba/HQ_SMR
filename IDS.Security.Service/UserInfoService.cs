@@ -377,7 +377,7 @@ namespace IDS.Security.Service
         }
 
 
-        public override  Page<UserInfo> List(Page<UserInfo> page, Expression<Func<UserInfo, bool>> predicate=null) {
+        public override  Page<UserInfo> List(Page<UserInfo> page, Expression<Func<UserInfo, bool>> predicate=null, Expression<Func<UserInfo, bool>> orderby = null, Expression<Func<UserInfo, bool>> orderBydesc = null) {
             using (var ctx = DbContext()) {
 
                 Expression<Func<VDepartmentUser, bool>> where = null;

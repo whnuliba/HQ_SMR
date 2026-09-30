@@ -124,6 +124,14 @@ namespace IDS.HQ.Module
                 entity.ToTable("RackAlarm");
 
             });
+
+            modelBuilder.Entity<RackAlarmHis>(entity =>
+            {
+                entity.HasKey(e => e.Id).HasName("PRIMARY");
+
+                entity.ToTable("RackAlarmHis");
+
+            });
         }
     }
 }

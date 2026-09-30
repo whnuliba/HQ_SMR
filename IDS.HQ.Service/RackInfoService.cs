@@ -196,7 +196,7 @@ namespace IDS.HQ.Service
             return IdsResult<object>.ok();
         }
 
-        public override Page<RackInfo> List(Page<RackInfo> page, Expression<Func<RackInfo, bool>> predicate)
+        public override Page<RackInfo> List(Page<RackInfo> page, Expression<Func<RackInfo, bool>> predicate, Expression<Func<RackInfo, bool>> orderby = null, Expression<Func<RackInfo, bool>> orderBydesc = null)
         {
             var upload = page.requestData ?? new RackInfo();
             if (!string.IsNullOrWhiteSpace(upload.RackNo))  //托盘编码批量

@@ -11,6 +11,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
+using static LinqToDB.Reflection.Methods.LinqToDB.Insert;
 
 namespace IDS.HQ.Service
 {
@@ -150,7 +151,7 @@ namespace IDS.HQ.Service
             }
         }
 
-        public override Page<RackAlarm> List(Page<RackAlarm> page, Expression<Func<RackAlarm, bool>> predicate)
+        public override Page<RackAlarm> List(Page<RackAlarm> page, Expression<Func<RackAlarm, bool>> predicate,  Expression<Func<RackAlarm, bool>> orderby = null, Expression<Func<RackAlarm, bool>> orderBydesc = null)
         {
             var upload = page.requestData ?? new RackAlarm();
 
@@ -191,8 +192,14 @@ namespace IDS.HQ.Service
                 else
                     predicate = predicate.And(f => f.HandleState == upload.HandleState);
             }
-
-            return base.List(page, predicate);
+            using (var ctx = DbContext())
+            {
+                var req = page.requestData;
+                var data = ctx.Query<RackAlarm>(predicate).Skip((page.current - 1) * page.pageSize).Take(page.pageSize).OrderByDescending(f => f.CreateTime).ToList();
+                var count = ctx.Count<RackAlarm>(predicate);
+                Page<RackAlarm> page1 = new Page<RackAlarm>(count, data, page.pageSize, page.current);
+                return page1;
+            }
         }
     }
 }
