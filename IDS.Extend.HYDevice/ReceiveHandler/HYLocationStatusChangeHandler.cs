@@ -280,16 +280,17 @@ namespace IDS.Extend.HYDevice.ReceiveHandler
                         {
                             var matlHis = new MaterialInfoHis();
                             ObjectExtensions.CopyProperties(matl, matlHis);
-
+                            matlHis.LastModifyUser = "非法拿起物料";
                             ctx.Delete<MaterialInfo>(f => f.Id == matl.Id);
                             ctx.Insert(matlHis);
-                            ctx.SaveChanges();
-
                             // 如果需要校验受影响行数，可用 ChangeTracker 或重新查询确认
                         }
 
-                        #region 处理发送给WMS的下架逻辑
-                        var sendWms = new List<LocationInfoChangeData>
+                        #region 处理发送给WMS的下架逻辑,通过参数配置确认是否需要发送给WMS
+                        string IllegalDownNeedSendWmsStr =  AppConfig.GetConfigInfo("HQ_SMR:IllegalDownNeedSendWms")??"true";
+                        bool.TryParse(IllegalDownNeedSendWmsStr, out bool IllegalDownNeedSendWms);
+                        if (IllegalDownNeedSendWms) {
+                            var sendWms = new List<LocationInfoChangeData>
                             {
                                 new LocationInfoChangeData{
                                  OperateType = "Down",
@@ -301,7 +302,9 @@ namespace IDS.Extend.HYDevice.ReceiveHandler
                                  TimeStamp = DateTime.UtcNow.ToString(),
                                 }
                             };
-                        TaskReturnWmsDispatchHandler.Instance.SendLocationInfoChange<LocationInfoChangeData>(sendWms, IdUtils.Id+"");
+                            TaskReturnWmsDispatchHandler.Instance.SendLocationInfoChange<LocationInfoChangeData>(sendWms, IdUtils.Id + "");
+                        }
+  
                         #endregion
                         transaction.Commit();
 
