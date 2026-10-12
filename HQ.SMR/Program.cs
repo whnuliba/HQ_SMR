@@ -101,6 +101,8 @@ public partial class Program
         builder.Services.AddHostedService<CleanDispatchMessageJob>();
         builder.Services.AddHostedService<DispatchMessageJob>(); 
         builder.Services.AddHostedService<CleanRunningLog>();
+        builder.Services.AddHostedService<CleanMaterialInfoJob>();
+        builder.Services.AddHostedService<CleanRackTaskJob>();
         var app = builder.Build();
         app.UseWebSockets();
         // Configure the HTTP request pipeline.
