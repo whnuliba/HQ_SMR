@@ -99,7 +99,8 @@ public partial class Program
         builder.Services.AddHostedService<RackAlarmNotice>();
         builder.Services.AddHostedService<CleanRackAlarm>();
         builder.Services.AddHostedService<CleanDispatchMessageJob>();
-        builder.Services.AddHostedService<DispatchMessageJob>();
+        builder.Services.AddHostedService<DispatchMessageJob>(); 
+        builder.Services.AddHostedService<CleanRunningLog>();
         var app = builder.Build();
         app.UseWebSockets();
         // Configure the HTTP request pipeline.
