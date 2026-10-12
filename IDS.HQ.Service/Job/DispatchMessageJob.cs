@@ -62,7 +62,7 @@ namespace IDS.HQ.Service.Job
                         start.Stop();
                         string msg = $"发送WMS报文[LocationInfoChange]出现错误了时长:{start.ElapsedMilliseconds},Request:{log.Message},错误:{ex.Message}";
                         _logger.LogError(msg);
-                        IdsMessageHandler<object>.ErrorMessage(msg);
+                       await IdsMessageHandler<object>.ErrorMessage(msg);
                         //输出到控制台
 
                     }
@@ -93,7 +93,7 @@ namespace IDS.HQ.Service.Job
                             } catch (Exception ex) {
                                 string msg = $"迁移报文[LocationInfoChange]出现错误了Request:{JsonConvert.SerializeObject(message)},错误:{ex.Message}";
                                 _logger.LogError(msg);
-                                IdsMessageHandler<object>.ErrorMessage(msg);
+                              await IdsMessageHandler<object>.ErrorMessage(msg);
                                 ts.Rollback();
                             }
                          
