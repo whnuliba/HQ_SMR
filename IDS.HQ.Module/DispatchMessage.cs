@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Text;
 
 namespace IDS.HQ.Module
@@ -33,7 +34,7 @@ namespace IDS.HQ.Module
         /// <summary>
         /// 产品PPID
         /// </summary>
-        public string PpId { get; set; }
+        public string? PpId { get; set; }
 
         /// <summary>
         /// 时间戳
@@ -44,7 +45,7 @@ namespace IDS.HQ.Module
         /// 消息（文本）
         /// </summary>
 
-        public string Message { get; set; }
+        public string? Message { get; set; }
 
         /// <summary>
         /// 请求ID/会话ID
@@ -52,5 +53,11 @@ namespace IDS.HQ.Module
         public string? RequestId { get; set; }
         public string? RespMessage { get; set; }
         public string? IOStatus { get; set; }
+        public int? PostCount { set; get; }
+        public string? BizStatus { set; get; }
+        [NotMapped]
+        public DateTime? BeginTime { set; get; }
+        [NotMapped]
+        public DateTime? EndTime { set; get; }
     }
 }

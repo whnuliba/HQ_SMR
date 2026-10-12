@@ -97,7 +97,9 @@ public partial class Program
         });
         // 注册为 HostedService，随应用启动/停止
         builder.Services.AddHostedService<RackAlarmNotice>();
-        builder.Services.AddHostedService<CleanRackAlarm>();   
+        builder.Services.AddHostedService<CleanRackAlarm>();
+        builder.Services.AddHostedService<CleanDispatchMessageJob>();
+        builder.Services.AddHostedService<DispatchMessageJob>();
         var app = builder.Build();
         app.UseWebSockets();
         // Configure the HTTP request pipeline.

@@ -77,7 +77,7 @@ namespace IDS.Persistence
             };
         }
 
-        public virtual Page<T> List(Page<T> page, Expression<Func<T, bool>> predicate, Expression<Func<T, bool>> orderby = null, Expression<Func<T, bool>> orderBydesc = null)
+        public virtual Page<T> List(Page<T> page, Expression<Func<T, bool>> predicate, Expression<Func<T, object>> orderby = null, Expression<Func<T, object>> orderBydesc = null)
         {
             using (var ctx = DbContext())
             {
@@ -98,7 +98,7 @@ namespace IDS.Persistence
             }
         }
 
-        public async Task<Page<T>> ListAsync(Page<T> page, Expression<Func<T, bool>> predicate, Expression<Func<T, bool>> orderby=null, Expression<Func<T, bool>> orderBydesc = null)
+        public async Task<Page<T>> ListAsync(Page<T> page, Expression<Func<T, bool>> predicate, Expression<Func<T, object>> orderby=null, Expression<Func<T, object>> orderBydesc = null)
         {
             using (var ctx = DbContext())
             {

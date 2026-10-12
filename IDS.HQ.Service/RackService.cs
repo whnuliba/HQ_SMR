@@ -30,7 +30,7 @@ namespace IDS.HQ.Service
             }
         }
 
-        public override Page<Rack> List(Page<Rack> page, Expression<Func<Rack, bool>> predicate, Expression<Func<Rack, bool>> orderby = null, Expression<Func<Rack, bool>> orderBydesc = null)
+        public override Page<Rack> List(Page<Rack> page, Expression<Func<Rack, bool>> predicate, Expression<Func<Rack, object>> orderby = null, Expression<Func<Rack, object>> orderBydesc = null)
         {
             var upload = page.requestData ?? new Rack();
             if (!string.IsNullOrWhiteSpace(upload.RackNo))  //托盘编码批量

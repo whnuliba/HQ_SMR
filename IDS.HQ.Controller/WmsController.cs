@@ -3,6 +3,7 @@ using IDS.Base.Utils;
 using IDS.Common;
 using IDS.Common.Utils;
 using IDS.Extend.HYDevice;
+using IDS.Extend.HYDevice.Dispatch;
 using IDS.Extend.HYDevice.DTO;
 using IDS.HQ.HYDevice.Protocol;
 using IDS.HQ.Module;
@@ -45,6 +46,7 @@ namespace IDS.HQ.Controller
             {
                 wmsResponse.Code = 1;
                 wmsResponse.Message ="上传信息为空";
+               await TaskReturnWmsDispatchHandler.Instance.SendLocationInfoChange(wmsPuyway, wmsResponse, wmsResponse.Code == 1 ? 0 : 1, "1");
                 return wmsResponse;
             }
             try
@@ -59,15 +61,15 @@ namespace IDS.HQ.Controller
                         wmsResponse.Code = 0;
                         if (!res.Success)
                         {
-                            wmsResponse.Code = 1;
+                            wmsResponse.Code = 2;
                             wmsResponse.Message = res.Message;
                         }
-
+                        await TaskReturnWmsDispatchHandler.Instance.SendLocationInfoChange(wmsPuyway, wmsResponse, wmsResponse.Code == 1 ? 0 : 1, "1");
                         return wmsResponse;
                     }
                     catch (Exception ex)
                     {
-                        wmsResponse.Code = 1;
+                        wmsResponse.Code = 2;
                         wmsResponse.Message = ex.Message;
                     }
                     finally
@@ -79,15 +81,17 @@ namespace IDS.HQ.Controller
             }
             catch (Exception ex)
             {
-                wmsResponse.Code = 1;
+                wmsResponse.Code = 2;
                 wmsResponse.Message = ex.Message;
             }
+            //记录日志
+            await TaskReturnWmsDispatchHandler.Instance.SendLocationInfoChange(wmsPuyway, wmsResponse, wmsResponse.Code==1?0:1, "1");
             return wmsResponse;
-             
+          
         }
         [HttpPost]
         [Route("DownRackCMD")]
-        public WmsResponse WmsOutbound(WmsOutBoundRequest wmsOutBound) {
+        public async  Task<WmsResponse> WmsOutbound(WmsOutBoundRequest wmsOutBound) {
             //处理出库需要检查
             var wmsResponse = new WmsResponse();
             wmsResponse.Message = "上架无异常";
@@ -100,6 +104,7 @@ namespace IDS.HQ.Controller
             {
                 wmsResponse.Code = 1;
                 wmsResponse.Message ="下架信息为空，或者货架号为空";
+                await TaskReturnWmsDispatchHandler.Instance.SendLocationInfoChange(wmsOutBound, wmsResponse, 0, "0");
                 return wmsResponse;
 
             }
@@ -110,11 +115,13 @@ namespace IDS.HQ.Controller
                 if (string.IsNullOrEmpty(rack.Key)) {
                     wmsResponse.Code = 1;
                     wmsResponse.Message = "存在货架编码为空的报文。";
+                    await TaskReturnWmsDispatchHandler.Instance.SendLocationInfoChange(wmsOutBound, wmsResponse, 0, "0");
                     return wmsResponse;
                 }
                 if (rack.Value == null || rack.Value.Count == 0) {
                     wmsResponse.Code = 1;
                     wmsResponse.Message = $"存在货架{rack.Key}储位为空的报文！";
+                    await TaskReturnWmsDispatchHandler.Instance.SendLocationInfoChange(wmsOutBound, wmsResponse, 01, "0");
                     return wmsResponse;
                 }
             }
@@ -131,6 +138,7 @@ namespace IDS.HQ.Controller
                 message.Append(res.Message).Append(";");
             }
             wmsResponse.Message = message.ToString();
+            await TaskReturnWmsDispatchHandler.Instance.SendLocationInfoChange(wmsOutBound, wmsResponse,1,"0");
             return wmsResponse;
         }
 

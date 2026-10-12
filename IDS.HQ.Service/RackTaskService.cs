@@ -533,7 +533,7 @@ namespace IDS.HQ.Service
             }
             return IdsResult<RackTask>.ok();
         }
-        public override Page<RackTask> List(Page<RackTask> page, Expression<Func<RackTask, bool>> predicate, Expression<Func<RackTask, bool>> orderby = null, Expression<Func<RackTask, bool>> orderBydesc = null)
+        public override Page<RackTask> List(Page<RackTask> page, Expression<Func<RackTask, bool>> predicate, Expression<Func<RackTask, object>> orderby = null, Expression<Func<RackTask, object>> orderBydesc = null)
         {
 
             var upload = page.requestData ?? new RackTask();

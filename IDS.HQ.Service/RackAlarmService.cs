@@ -151,7 +151,7 @@ namespace IDS.HQ.Service
             }
         }
 
-        public override Page<RackAlarm> List(Page<RackAlarm> page, Expression<Func<RackAlarm, bool>> predicate,  Expression<Func<RackAlarm, bool>> orderby = null, Expression<Func<RackAlarm, bool>> orderBydesc = null)
+        public override Page<RackAlarm> List(Page<RackAlarm> page, Expression<Func<RackAlarm, bool>> predicate,  Expression<Func<RackAlarm, object>> orderby = null, Expression<Func<RackAlarm, object>> orderBydesc = null)
         {
             var upload = page.requestData ?? new RackAlarm();
 

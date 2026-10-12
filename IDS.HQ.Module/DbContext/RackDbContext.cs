@@ -75,6 +75,7 @@ public partial class RackDbContext : IDSContext
     public virtual DbSet<MaterialInfoHis> MaterialInfoHis { get; set; }
     public virtual DbSet<MaterialInfoCancel> MaterialInfoCancel { get; set; }
     public virtual DbSet<DispatchMessage> DispatchMessage { get; set; }
+    public virtual DbSet<DispatchMessageHis> DispatchMessageHis { get; set; }
     public virtual DbSet<RackRunningLog> RackRunningLog { get; set; }
     public virtual DbSet<RackAlarm> RackAlarm { get; set; }
     public virtual DbSet<RackAlarmHis> RackAlarmHis { get; set; }

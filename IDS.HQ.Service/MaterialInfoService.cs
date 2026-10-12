@@ -79,7 +79,7 @@ namespace IDS.HQ.Service
             }
         }
 
-        public override Page<MaterialInfo> List(Page<MaterialInfo> page, Expression<Func<MaterialInfo, bool>> predicate, Expression<Func<MaterialInfo, bool>> orderby = null, Expression<Func<MaterialInfo, bool>> orderBydesc = null)
+        public override Page<MaterialInfo> List(Page<MaterialInfo> page, Expression<Func<MaterialInfo, bool>> predicate, Expression<Func<MaterialInfo, object>> orderby = null, Expression<Func<MaterialInfo, object>> orderBydesc = null)
         {
             var upload = page.requestData ?? new MaterialInfo();
 
