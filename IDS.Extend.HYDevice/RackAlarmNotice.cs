@@ -168,7 +168,7 @@ namespace IDS.Extend.HYDevice
             {
                 if (int.TryParse(alarm.Name.ToString(), out int addr))
                 {
-                    locs.Add(addr);
+                    locs.Add(addr-1);
                 }
             }
 

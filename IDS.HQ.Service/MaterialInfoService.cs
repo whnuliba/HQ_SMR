@@ -122,7 +122,8 @@ namespace IDS.HQ.Service
                     predicate = predicate.And(f => f.VendorCode.Contains(upload.VendorCode));
             }
 
-            return base.List(page, predicate);
+            orderBydesc = f => f.CreateTime;
+            return base.List(page, predicate, null, orderBydesc);
         }
 
         public Page<VMaterialInfo> GetMaterialInfo(Page<VMaterialInfo> page, Expression<Func<VMaterialInfo, bool>> predicate)

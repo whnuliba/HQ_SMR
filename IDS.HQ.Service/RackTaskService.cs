@@ -568,7 +568,8 @@ namespace IDS.HQ.Service
                 else
                     predicate = predicate.And(f => f.TaskState == upload.TaskState);
             }
-            return base.List(page, predicate);
+            orderBydesc = f=>f.CreateTime;
+            return base.List(page, predicate,null, orderBydesc);
 
         }
 

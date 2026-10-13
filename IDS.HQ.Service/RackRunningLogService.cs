@@ -113,6 +113,15 @@ namespace IDS.HQ.Service
                     predicate = predicate.And(f => taskIds.Contains(f.TaskId));
             }
 
+            // 按任务ID批量查询
+            if (!string.IsNullOrWhiteSpace(upload.PPID))
+            {
+                var taskIds = upload.PPID.Split(",").ToList();
+                if (predicate == null)
+                    predicate = f => taskIds.Contains(f.PPID);
+                else
+                    predicate = predicate.And(f => taskIds.Contains(f.PPID));
+            }
             // 按日志级别查询
             if (!string.IsNullOrWhiteSpace(upload.LogLevel))
             {

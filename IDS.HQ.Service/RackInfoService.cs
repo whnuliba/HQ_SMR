@@ -207,6 +207,13 @@ namespace IDS.HQ.Service
                 else
                     predicate = predicate.And(f => trayNum.Contains(f.RackNo));
             }
+            if (upload.Location!=null)  //托盘编码批量
+            {
+                if (predicate == null)
+                    predicate = f => f.Location== upload.Location;
+                else
+                    predicate = predicate.And(f =>  f.Location == upload.Location);
+            }
             if (!string.IsNullOrWhiteSpace(upload.IP))  //托盘编码批量
             {
                 var trayNum = upload.IP.Split(",").ToList();
@@ -223,7 +230,8 @@ namespace IDS.HQ.Service
                 else
                     predicate = predicate.And(f => trayNum.Contains(f.PPID));
             }
-            return base.List(page, predicate);
+            orderBydesc = f => f.CreateTime;
+            return base.List(page, predicate, null, orderBydesc);
         }
 
         public List<RackInfo> GetRackStatus(string rackNo)

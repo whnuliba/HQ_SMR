@@ -174,7 +174,15 @@ namespace IDS.HQ.Service
                 else
                     predicate = predicate.And(f => taskIds.Contains(f.TaskId));
             }
-
+            // 按任务ID批量查询
+            if (!string.IsNullOrWhiteSpace(upload.PPID))
+            {
+                var taskIds = upload.PPID.Split(",").ToList();
+                if (predicate == null)
+                    predicate = f => taskIds.Contains(f.PPID);
+                else
+                    predicate = predicate.And(f => taskIds.Contains(f.PPID));
+            }
             // 按报警类型查询
             if (upload.AlarmType.HasValue)
             {
