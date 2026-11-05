@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace IDS.Extend.HYDevice
+namespace IDS.Extend.Protocol
 {
     public class LEDColor
     {

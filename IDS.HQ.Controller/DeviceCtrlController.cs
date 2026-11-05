@@ -390,5 +390,48 @@ namespace IDS.HQ.Controller
             SmartMaterialRackNode.Instance.NoticeRack(data.data.RackNo, message);
             return ResponseEntity<object>.Success("获取储位状态请求已发送");
         }
+
+        /// 一级板初始化（含感应配置、颜色、二级板灯珠数量、服务器地址）
+        /// </summary>
+        [HttpPost]
+        [Route("FirstBoardInit")]
+        public ResponseEntity<object> FirstBoardInit(RequestData<FirstBoardInitRequest> data)
+        {
+            if (!RequestData<FirstBoardInitRequest>.isRequest(data))
+                return ResponseEntity<object>.Error("请传入合法参数");
+
+            var req = data.data;
+
+            // ---- 参数校验 ----
+            if (req.Colors == null || req.Colors.Count == 0)
+                return ResponseEntity<object>.Error("颜色列表不能为空");
+
+            if (string.IsNullOrWhiteSpace(req.ServerIP))
+                return ResponseEntity<object>.Error("服务器IP不能为空");
+
+            var ipParts = req.ServerIP.Split('.');
+            if (ipParts.Length != 4 || !ipParts.All(p => byte.TryParse(p, out _)))
+                return ResponseEntity<object>.Error("服务器IP格式不正确");
+
+            if (req.ServerPort <= 0 || req.ServerPort > 65535)
+                return ResponseEntity<object>.Error("服务器端口不合法");
+
+            if (req.LedQtyPerSecondBoard == null || req.LedQtyPerSecondBoard.Count == 0)
+                return ResponseEntity<object>.Error("二级板灯珠数量列表不能为空");
+
+            if (req.LedQtyPerSecondBoard.Any(q => q < 0 || q > 65535))
+                return ResponseEntity<object>.Error("单块二级板灯珠数量必须在 0~65535 之间");
+
+            // ---- 构造协议报文 ----
+            byte[] message = DeviceMessage.GetFirstControlBoardInitInductive(
+                req.Colors,
+                req.IsInductive,
+                req.ServerIP,
+                req.ServerPort,
+                req.LedQtyPerSecondBoard);
+
+            SmartMaterialRackNode.Instance.NoticeRack(req.RackNo, message);
+            return ResponseEntity<object>.Success("一级板初始化请求已发送");
+        }
     }
 }

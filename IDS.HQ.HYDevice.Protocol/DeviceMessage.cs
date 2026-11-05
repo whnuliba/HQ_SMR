@@ -1,4 +1,5 @@
-﻿using System;
+﻿using IDS.Extend.Protocol;
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
@@ -390,6 +391,41 @@ namespace IDS.HQ.HYDevice.Protocol
         public static byte[] GetAddrStatusMessage()
         {
             return GetMessage(15, 16, null);
+        }
+
+        public static byte[] GetFirstControlBoardInitInductive(List<LEDColor> colors, bool isInductive, string serverIP, int serverPort, List<int> ledQtyPerSecondBoard)
+        {
+            int num = 1 + colors.Count * 3 + 1 + 1 + 1 + 1 + ledQtyPerSecondBoard.Count * 2 + 4 + 2;
+            byte[] array = new byte[num];
+            array[0] = (byte)colors.Count;
+            for (int j = 0; j < colors.Count; j++)
+            {
+                array[0 + j * 3 + 1] = colors[j].G;
+                array[0 + j * 3 + 2] = colors[j].R;
+                array[0 + j * 3 + 3] = colors[j].B;
+            }
+            array[0 + 3 * colors.Count + 1] = ((byte)(isInductive ? 1 : 0));
+            array[0 + 3 * colors.Count + 2] = 0;
+            array[0 + 3 * colors.Count + 3] = 0;
+            array[0 + 3 * colors.Count + 4] = (byte)ledQtyPerSecondBoard.Count;
+            for (int k = 0; k < ledQtyPerSecondBoard.Count; k++)
+            {
+                string text = ledQtyPerSecondBoard[k].ToString("x").PadLeft(4, '0');
+                array[0 + 3 * colors.Count + 4 + 1 + k * 2] = Convert.ToByte(text.Substring(0, 2), 16);
+                array[0 + 3 * colors.Count + 4 + 2 + k * 2] = Convert.ToByte(text.Substring(2), 16);
+            }
+            string[] array2 = serverIP.Split(new char[]
+            {
+                '.'
+            });
+            for (int l = 0; l < array2.Length; l++)
+            {
+                array[0 + 3 * colors.Count + 4 + 2 - 1 + ledQtyPerSecondBoard.Count * 2 + l] = Convert.ToByte(array2[l]);
+            }
+            string text2 = Convert.ToString(serverPort, 16).PadLeft(4, '0');
+            array[0 + 3 * colors.Count + 4 + 2 - 1 + ledQtyPerSecondBoard.Count * 2 + 4] = Convert.ToByte(text2.Substring(0, 2), 16);
+            array[0 + 3 * colors.Count + 4 + 2 - 1 + ledQtyPerSecondBoard.Count * 2 + 4 + 1] = Convert.ToByte(text2.Substring(2, 2), 16);
+            return GetMessage((byte)(num+13+2), 1, array);
         }
 
     }

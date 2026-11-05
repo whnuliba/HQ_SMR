@@ -1,4 +1,5 @@
-﻿using System;
+﻿using IDS.Extend.Protocol;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -254,5 +255,39 @@ namespace IDS.Extend.HYDevice.DTO
         public List<int> Addrs { get; set; }    // 变化的储位列表
         public string PkgId { get; set; }        // 命令包ID
     }
+    /// <summary>
+    /// 一级板初始化请求
+    /// </summary>
+    public class FirstBoardInitRequest
+    {
+        /// <summary>
+        /// 货架编号
+        /// </summary>
+        public string RackNo { get; set; }
 
+        /// <summary>
+        /// 颜色列表（每个元素为 G/R/B 三色）
+        /// </summary>
+        public List<LEDColor> Colors { get; set; }
+
+        /// <summary>
+        /// 是否启用感应
+        /// </summary>
+        public bool IsInductive { get; set; }
+
+        /// <summary>
+        /// 服务器 IP
+        /// </summary>
+        public string ServerIP { get; set; }
+
+        /// <summary>
+        /// 服务器端口
+        /// </summary>
+        public int ServerPort { get; set; }
+
+        /// <summary>
+        /// 每块二级板的灯珠数量（按板顺序）
+        /// </summary>
+        public List<int> LedQtyPerSecondBoard { get; set; }
+    }
 }

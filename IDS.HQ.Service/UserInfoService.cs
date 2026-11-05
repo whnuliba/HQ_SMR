@@ -110,6 +110,18 @@ namespace IDS.HQ.Service
                 }
             }
         }
+        public override int update(UserInfo record, string?[] properites = null)
+        {
+            string puk = AppConfig.GetConfigInfo("RSA:publicKey");
+            string prk = AppConfig.GetConfigInfo("RSA:privateKey");
+            using (var ctx = DbContext()) {
+                if (!string.IsNullOrEmpty(record.Password)) {
+                    string _procPwd = RsaHelper.Encrypt(record.Password, puk, true);
+                    record.Password = _procPwd;
+                }
+            }
+                return base.update(record, properites);
+        }
 
         public int UpdatePwd(ChangeUserPassword pwdDto)
         {
