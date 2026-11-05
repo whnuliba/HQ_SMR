@@ -259,8 +259,19 @@ namespace IDS.HQ.Controller
             if (!RequestData<QueryInitInfoRequest>.isRequest(data))
                 return ResponseEntity<object>.Error("请传入合法参数");
             byte[] message = DeviceMessage.GetQueryInitInfo();
-            SmartMaterialRackNode.Instance.NoticeRack(data.data.RackNo, message);
-            return ResponseEntity<object>.Success("ok");
+            ResponseEntity<object> response = null;
+            SmartMaterialRackNode.Instance.NoticeRack(data.data.RackNo, message ,(session) => {
+                var res = session.HandlerResult ?? IdsResult<object>.failure("超时等待无返回");
+                if (res.Success)
+                {
+                    response = ResponseEntity<object>.Success(session.HandlerResult.Data);
+                }
+                else
+                {
+                    response = ResponseEntity<object>.Error("超时未收到设备取消成功的反馈");
+                }
+            });
+            return response;
         }
         /// <summary>
         /// 取消报警
