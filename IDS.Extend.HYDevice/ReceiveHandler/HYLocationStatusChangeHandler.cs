@@ -218,8 +218,8 @@ namespace IDS.Extend.HYDevice.ReceiveHandler
                                                (int)LightColor.Red);
                             SmartMaterialRackNode.Instance.NoticeRack(uptasktask.RackNo, message);
                             //回滚日志
-                            //ts.Rollback();
-                            //return IdsResult<object>.failure($"货架{uptasktask.RackNo} 储位{locationInfo.Addr}上传WMS失败");
+                            ts.Rollback();
+                            return IdsResult<object>.failure($"货架{uptasktask.RackNo} 储位{locationInfo.Addr}上传WMS失败");
                         }
                         #endregion
                         //关闭亮灯
@@ -235,6 +235,15 @@ namespace IDS.Extend.HYDevice.ReceiveHandler
                             SmartMaterialRackNode.Instance.NoticeRack(rackNode.No, message);
                         }
                         //清除Redis上的任务
+                       string json = RedisClient.GetDatabase().StringGet(HYConstant.CheckPutwayKey + rackNode.No + ":" + rackNode.RackSide);
+                        if (!string.IsNullOrEmpty(json)) {
+                            RackLocationTaskDto dto = JsonConvert.DeserializeObject<RackLocationTaskDto>(json);
+                            if (dto != null && dto.Locations!=null && dto.Locations.Count>0) {
+                                dto.CreateTime = DateTime.Now;
+                                dto.Locations.Remove(LocationUtils.SmrToDevice(locationInfo.Addr));//这里的储位就是货架的物理地址
+                                RedisClient.GetDatabase().StringSet(string.Format(HYConstant.CurrentLightWithUpKey, rackNode.No, rackNode.RackSide), JsonConvert.SerializeObject(dto),TimeSpan.FromHours(2)); //记录正在亮灯的地址
+                            }
+                        }
                         RedisClient.GetDatabase().KeyDelete(HYConstant.CheckPutwayKey + rackNode.No + ":" + rackNode.RackSide);
                         ts.Commit();
                     }

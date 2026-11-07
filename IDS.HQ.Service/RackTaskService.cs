@@ -138,12 +138,13 @@ namespace IDS.HQ.Service
                         //先亮绿灯吧？后续按照需求规格来设置颜色;
                         Dictionary<int, byte> dic = allowLight.ToDictionary(k => k ?? 0, v => rackTask.AfterLightColor == null ? (byte)LightColor.LightWhite : (byte)rackTask.AfterLightColor);
                         SmartMaterialRackNode.Instance.NoticeRackMultiLightOn(rackTask.RackNo, dic);
-                        //主要用于判断当前任务允许的邓伟
+                        //主要用于判断当前任务允许
                         var locTask = new RackLocationTaskDto
                         {
                             TaskId = id + "",
                             Locations = allowLight.ToList(),
-                            AfterLightColor = rackTask.AfterLightColor == null ? (byte)LightColor.LightWhite : (byte)rackTask.AfterLightColor
+                            AfterLightColor = rackTask.AfterLightColor == null ? (byte)LightColor.LightWhite : (byte)rackTask.AfterLightColor,
+                            CreateTime = DateTime.Now
                         };
                         string locTaskStr = JsonConvert.SerializeObject(locTask);
                         Logger.Info(string.Format("创建任务完成{0},{1}", HYConstant.CheckPutwayKey + rackTask.RackNo + ":" + rackTask.RackSide, locTaskStr));

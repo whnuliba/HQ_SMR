@@ -13,5 +13,7 @@ namespace IDS.Extend.HYDevice
         public static string CheckPutwayKey = "HQ:HY:PUTWAY:CHECK:"; //料架号
         public static string RackAlarmRecordKey = "HQ:HY:RACK:ALARM:";
         public static string RackAlarmRecordKeyWithSide = "S";
+        //正在亮灯的
+        public static string CurrentLightWithUpKey = "CurrentLightWithUp:{0}:{1}";
     }
 }
