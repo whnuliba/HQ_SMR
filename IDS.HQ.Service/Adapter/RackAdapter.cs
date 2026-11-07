@@ -20,5 +20,8 @@ namespace IDS.HQ.Service.Adapter
         public IdsResult<List<Rack>> GetAllRackNode() { 
           return _service.GetAllRackNode();
         }
+        public IdsResult<object> UpdateRackInfo(Rack rack) {
+            return _service.UpdateRackInfo(rack);
+        }
     }
 }

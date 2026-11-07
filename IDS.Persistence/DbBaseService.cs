@@ -1,5 +1,6 @@
 ﻿using IDS.Base;
 using IDS.Base.Utils;
+using IDS.Common.Utils;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using System;
@@ -34,20 +35,27 @@ namespace IDS.Persistence
                 return ctx.Delete<T>(f => f.Id == id);
             }
         }
-
         public virtual int save(T record, string?[] properites = null)
         {
             if (!String.IsNullOrWhiteSpace(record.Id))
             {
-                return update(record, properites);
+                using (var ctx = DbContext())
+                {
+                    record.updateInit();
+                    if (properites != null && properites.Length > 0)
+                        return ctx.Update<T>(record, properites);
+                    ctx.Set<T>().Update(record);
+                    return ctx.SaveChanges();
+                }
             }
+
             using (var ctx = DbContext())
             {
-        
+
                 record.saveInit();
-                if(string.IsNullOrWhiteSpace(record.Id))
-                    record.Id = BaseUtil.uuid();
-                return  ctx.Insert<T>(record);
+                if (string.IsNullOrWhiteSpace(record.Id))
+                    record.Id =BaseUtil.uuid();
+                return ctx.Insert<T>(record);
             }
         }
 

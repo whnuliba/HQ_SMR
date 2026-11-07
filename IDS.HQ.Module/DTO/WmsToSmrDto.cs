@@ -1,12 +1,49 @@
 ﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Globalization;
+using System.Runtime.Serialization;
 using System.Text;
 using System.Text.Json.Serialization;
 
 namespace IDS.HQ.Module.DTO
 {
+
+    public class NewtonsoftFlexibleDateTimeConverter : IsoDateTimeConverter
+    {
+        public NewtonsoftFlexibleDateTimeConverter()
+        {
+            DateTimeFormat = "yyyy-MM-dd'T'HH:mm:ss.FFFFFFFzzz";
+        }
+
+        public override object? ReadJson(JsonReader reader, Type objectType, object? existingValue, JsonSerializer serializer)
+        {
+            if (reader.TokenType == JsonToken.Null) return null;
+            var s = reader.Value?.ToString();
+            if (string.IsNullOrWhiteSpace(s)) return null;
+
+            string[] formats =
+            {
+                "yyyy-MM-dd'T'HH:mm:ss.FFFFFFFzzz",
+                "yyyy-MM-dd'T'HH:mm:ss.FFFFFFF",
+                "yyyy-MM-dd'T'HH:mm:ss",
+                "yyyy-MM-dd HH:mm:ss",
+                "yyyy-MM-dd HH-mm-ss",   // 客户端实际发的
+                "yyyy-MM-dd"
+            };
+
+            if (DateTime.TryParseExact(s, formats, CultureInfo.InvariantCulture,
+                    DateTimeStyles.None, out var dt))
+                return dt;
+
+            if (DateTime.TryParse(s, CultureInfo.InvariantCulture, DateTimeStyles.None, out dt))
+                return dt;
+
+            throw new JsonSerializationException($"无法解析日期时间: {s}");
+        }
+    }
     /// <summary>
     /// 上架请求报文
     /// </summary>
@@ -145,6 +182,7 @@ namespace IDS.HQ.Module.DTO
         /// </summary>
         [JsonPropertyName("Timestamp")]
         [JsonProperty("Timestamp")]
+        [Newtonsoft.Json.JsonConverter(typeof(NewtonsoftFlexibleDateTimeConverter))]
         public DateTime? Timestamp { get; set; }
 
         /// <summary>
@@ -227,6 +265,7 @@ namespace IDS.HQ.Module.DTO
 
         [JsonPropertyName("Timestamp")]
         [JsonProperty("Timestamp")]
+        [Newtonsoft.Json.JsonConverter(typeof(NewtonsoftFlexibleDateTimeConverter))]
         public DateTime Timestamp { set; get; }//": "2020-06-04T11:37:13.3709747+08:00",
 
         [JsonPropertyName("SessionId")]
@@ -265,6 +304,8 @@ namespace IDS.HQ.Module.DTO
 
         [JsonPropertyName("Timestamp")]
         [JsonProperty("Timestamp")]
+        [Newtonsoft.Json.JsonConverter(typeof(NewtonsoftFlexibleDateTimeConverter))]
+
         public DateTime Timestamp { set; get; }//": "2020-06-04T11:37:13.3709747+08:00",
 
         [JsonPropertyName("SessionId")]
@@ -507,6 +548,8 @@ namespace IDS.HQ.Module.DTO
         /// </summary>
         [JsonPropertyName("Timestamp")]
         [JsonProperty("Timestamp")]
+        [Newtonsoft.Json.JsonConverter(typeof(NewtonsoftFlexibleDateTimeConverter))]
+
         public DateTime Timestamp { get; set; }
 
         /// <summary>

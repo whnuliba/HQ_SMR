@@ -24,6 +24,7 @@ using Newtonsoft.Json;
 using StackExchange.Redis;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -201,14 +202,25 @@ namespace IDS.Extend.HYDevice.ReceiveHandler
                         new LocationInfoChangeData{
                          OperateType = uptasktask.OperateType,
                          PpId = uptasktask.PPID,
-                         LedId = locationInfo.Addr+"",
+                         LedId =  (locationInfo.Addr+"").PadLeft(4,'0'),
                          IsLegal = 1+"",
                          RackId = uptasktask.RackNo,
                          Status = 1+"", //状态：1-上架，0-下架
-                         TimeStamp = DateTime.UtcNow.ToString(),
+                         TimeStamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture),
                         }
                     };
-                        TaskReturnWmsDispatchHandler.Instance.SendLocationInfoChange<LocationInfoChangeData>(sendWms, uptasktask.Id);
+                       bool sendWmsFlag =  TaskReturnWmsDispatchHandler.Instance.SendLocationInfoChange<LocationInfoChangeData>(sendWms, uptasktask.Id);
+                        //上架若发送MES失败，回滚。发送报警闪烁灯
+                        if (sendWmsFlag) {
+                            byte[] message = DeviceMessage.GetSingleLightFlashMessage(
+                                               5,
+                                                LocationUtils.SmrToDevice(locationInfo.Addr),
+                                               (int)LightColor.Red);
+                            SmartMaterialRackNode.Instance.NoticeRack(uptasktask.RackNo, message);
+                            //回滚日志
+                            //ts.Rollback();
+                            //return IdsResult<object>.failure($"货架{uptasktask.RackNo} 储位{locationInfo.Addr}上传WMS失败");
+                        }
                         #endregion
                         //关闭亮灯
                         var locsStr = RedisClient.GetDatabase().StringGet(HYConstant.CheckPutwayKey + rackNode.No + ":" + rackNode.RackSide);
@@ -217,7 +229,9 @@ namespace IDS.Extend.HYDevice.ReceiveHandler
                             var locs = JsonConvert.DeserializeObject<RackLocationTaskDto>(locsStr);
                             //调用多灯灭的接口
                             var leds = locs.Locations?.Where(f => f != null).Select(f => LocationUtils.SmrToDevice(f ?? 0)).ToList();
-                            byte[] message = DeviceMessage.GetMultiLightOffMessage(leds);
+                            //byte[] message = DeviceMessage.GetMultiLightOffMessage(leds);
+                            //
+                            byte[] message = DeviceMessage.GetSingleLightOffMessage(LocationUtils.SmrToDevice(locationInfo.Addr));
                             SmartMaterialRackNode.Instance.NoticeRack(rackNode.No, message);
                         }
                         //清除Redis上的任务
@@ -295,11 +309,11 @@ namespace IDS.Extend.HYDevice.ReceiveHandler
                                 new LocationInfoChangeData{
                                  OperateType = "Down",
                                  PpId = rackinfoload.PPID,
-                                 LedId = locationInfo.Addr+"",
+                                 LedId = (locationInfo.Addr + "").PadLeft(4, '0'),
                                  IsLegal = 1+"",
                                  RackId = rackinfoload.RackNo,
                                  Status = 0+"", //状态：1-上架，0-下架
-                                 TimeStamp = DateTime.UtcNow.ToString(),
+                                 TimeStamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture),
                                 }
                             };
                             TaskReturnWmsDispatchHandler.Instance.SendLocationInfoChange<LocationInfoChangeData>(sendWms, IdUtils.Id + "");
@@ -445,14 +459,26 @@ namespace IDS.Extend.HYDevice.ReceiveHandler
                         new LocationInfoChangeData{
                          OperateType = uptasktask.OperateType,
                          PpId = rackIinfo.PPID,
-                         LedId = locationInfo.Addr+"",
+                         LedId = (locationInfo.Addr+"").PadLeft(4,'0'),
                          IsLegal = 1+"",
                          RackId = uptasktask.RackNo,
                          Status = 0+"", //状态：1-上架，0-下架
-                         TimeStamp = DateTime.UtcNow.ToString(),
+                         TimeStamp =DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture),
                         }
                     };
-                        TaskReturnWmsDispatchHandler.Instance.SendLocationInfoChange<LocationInfoChangeData>(sendWms, uptasktask.Id);
+                       bool ackFlag = TaskReturnWmsDispatchHandler.Instance.SendLocationInfoChange<LocationInfoChangeData>(sendWms, uptasktask.Id);
+                        //上架若发送MES失败，回滚。发送报警闪烁灯
+                        if (ackFlag)
+                        {
+                            byte[] sendmessage = DeviceMessage.GetSingleLightFlashMessage(
+                                               5,
+                                                LocationUtils.SmrToDevice(locationInfo.Addr),
+                                               (int)LightColor.Red);
+                            SmartMaterialRackNode.Instance.NoticeRack(uptasktask.RackNo, sendmessage);
+                            //回滚日志
+                           // ts.Rollback();
+                           // return IdsResult<object>.failure($"货架{uptasktask.RackNo} 储位{locationInfo.Addr}上传WMS失败");
+                        }
                         #endregion
                         //发送灭灯
                         var led = LocationUtils.SmrToDevice(locationInfo.Addr);
@@ -616,7 +642,7 @@ namespace IDS.Extend.HYDevice.ReceiveHandler
                             AlarmMode = 0,
                             LocationMode = 0, // 1是发单个 2 是发多个
                             locations = locations?.Locations?.Select(c => c.Addr).ToList(),
-                            ErrorInfo = $"{res.Message};货架:{rackNode.No};IP:{rackNode.IP};面 {sideStr};储位:{item.Addr} 非法按下 ，原因{res.Message}!"
+                            ErrorInfo = $"{res.Message};货架:{rackNode.No};IP:{rackNode.IP};面 {sideStr};储位:{item.Addr} 可能非法按下 ，原因{res.Message}!"
                         };
                         Logger.Error(alarm.ErrorInfo);
                         SendAlarmNotice<RackAlarmInfo>(alarm, session);

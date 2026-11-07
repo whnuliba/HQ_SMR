@@ -57,8 +57,9 @@ namespace IDS.Extend.HYDevice.Dispatch
         }
 
         //架回调WMS接口：用于处理WMS业务数据
-        public void SendLocationInfoChange<E>(List<E> datas,string taskId) where E : LocationInfoChangeData
+        public bool SendLocationInfoChange<E>(List<E> datas,string taskId) where E : LocationInfoChangeData
         {
+            bool result = false;
             string servicePath = AppConfig.GetConfigInfo("AddressPool:WmsUrl");
             string token = AppConfig.GetConfigInfo("AddressPool:WmsToken");
             var start = new Stopwatch();
@@ -82,7 +83,8 @@ namespace IDS.Extend.HYDevice.Dispatch
                 PropertyNamingPolicy = JsonNamingPolicy.CamelCase
             };
             string jsonRequest = JsonSerializer.Serialize(request, options);
-            int sendState = 1;
+            //记录发送报文日志
+            int sendState = 0;
             string respMessage = string.Empty ;
             try
             {
@@ -91,13 +93,15 @@ namespace IDS.Extend.HYDevice.Dispatch
                 var responseData = ParseResponse<ApiResponseData>(respMessage);
                 start.Stop();
 
-                if (responseData == null || responseData.ApiResHeader.ApiCode!= "0x000000") // "APICode": "0x000000",--成功0x000000，失败0x000009
+                if (responseData != null && responseData.ApiResHeader!=null && responseData.ApiResHeader.ApiCode== "0x000000") // "APICode": "0x000000",--成功0x000000，失败0x000009
                 {
                     sendState = 1;
+                    result = true;
                 }
                 Logger.Info($"发送WMS报文[LocationInfoChange]完成:{start.ElapsedMilliseconds},Request:{jsonRequest},返回:{respMessage}");
             }
             catch (Exception ex) {
+                result = false;
                 sendState =0;
                 respMessage = ex.Message;
                 start.Stop();
@@ -108,49 +112,58 @@ namespace IDS.Extend.HYDevice.Dispatch
 
             }
             IDbContextFactory<RackDbContext> dbContext = ContainerUtils.AutofacServiceProvider.GetRequiredService<IDbContextFactory<RackDbContext>>();
-            using (var ctx = dbContext.CreateDbContext()) {
-
-                if (sendState == 0) {
-                    var message = new DispatchMessage
-                    {
-                        RackId = string.Join(",", request.ApiReqData.Select(f => f.RackId).ToList()),
-                        RequestId = request.ApiReqHeader.RequestId,
-                        Message = jsonRequest,
-                        RespMessage = respMessage,
-                        Status = sendState,
-                        BizStatus = request.ApiReqData[0].Status,
-                        TaskId = taskId,
-                        PostCount = 1,
-                        IOStatus = "O"
-                    };
-                    message.saveInit();
-                    message.Id = IdUtils.Id + "";
-                    ctx.Insert(message);
-                }
-                if (sendState == 1)
+            try {
+                using (var ctx = dbContext.CreateDbContext())
                 {
-                    var message = new DispatchMessageHis
+
+                    if (sendState == 0)
                     {
-                        RackId = string.Join(",", request.ApiReqData.Select(f => f.RackId).ToList()),
-                        RequestId = request.ApiReqHeader.RequestId,
-                        Message = jsonRequest,
-                        RespMessage = respMessage,
-                        Status = sendState,
-                        BizStatus = request.ApiReqData[0].Status,
-                        TaskId = taskId,
-                        PostCount = 1,
-                        IOStatus = "O"
-                    };
-                    message.saveInit();
-                    message.Id = IdUtils.Id + "";
-                    ctx.Insert(message);
+                        var message = new DispatchMessage
+                        {
+                            RackId = string.Join(",", request.ApiReqData.Select(f => f.RackId).ToList()),
+                            RequestId = request.ApiReqHeader.RequestId,
+                            Message = jsonRequest,
+                            RespMessage = respMessage,
+                            Status = sendState,
+                            BizStatus = request.ApiReqData[0].Status,
+                            TaskId = taskId,
+                            PostCount = 1,
+                            IOStatus = "O"
+                        };
+                        message.saveInit();
+                        message.Id = IdUtils.Id + "";
+                        ctx.Insert(message);
+                    }
+                    if (sendState == 1)
+                    {
+                        var message = new DispatchMessageHis
+                        {
+                            RackId = string.Join(",", request.ApiReqData.Select(f => f.RackId).ToList()),
+                            RequestId = request.ApiReqHeader.RequestId,
+                            Message = jsonRequest,
+                            RespMessage = respMessage,
+                            Status = sendState,
+                            BizStatus = request.ApiReqData[0].Status,
+                            TaskId = taskId,
+                            PostCount = 1,
+                            IOStatus = "O"
+                        };
+                        message.saveInit();
+                        message.Id = IdUtils.Id + "";
+                        ctx.Insert(message);
+                    }
                 }
+            } catch (Exception ex) {
+                string ack = result ? "成功" : "失败";
+                Logger.Info($"发送WMS报文{ack}，但是落地本地库失败 Request:{jsonRequest},返回:{respMessage},{ex.Message}");
             }
+            return result;
 
         }
 
-        public async Task SendLocationInfoChangeAsync<E>(List<E> datas, string taskId) where E : LocationInfoChangeData
+        public async Task<bool> SendLocationInfoChangeAsync<E>(List<E> datas, string taskId) where E : LocationInfoChangeData
         {
+            bool result = false;
             string servicePath = AppConfig.GetConfigInfo("AddressPool:WmsUrl");
             string token = AppConfig.GetConfigInfo("AddressPool:WmsToken");
             var start = new Stopwatch();
@@ -183,14 +196,16 @@ namespace IDS.Extend.HYDevice.Dispatch
                 var responseData = ParseResponse<ApiResponseData>(respMessage);
                 start.Stop();
 
-                if (responseData == null || responseData.ApiResHeader.ApiCode != "0x000000") // "APICode": "0x000000",--成功0x000000，失败0x000009
+                if (responseData != null && responseData.ApiResHeader != null && responseData.ApiResHeader.ApiCode == "0x000000") // "APICode": "0x000000",--成功0x000000，失败0x000009
                 {
                     sendState = 1;
+                    result = true;
                 }
                 Logger.Info($"发送WMS报文[LocationInfoChange]完成:{start.ElapsedMilliseconds},Request:{jsonRequest},返回:{respMessage}");
             }
             catch (Exception ex)
             {
+                result = false;
                 sendState = 0;
                 respMessage = ex.Message;
                 start.Stop();
@@ -201,47 +216,55 @@ namespace IDS.Extend.HYDevice.Dispatch
 
             }
             IDbContextFactory<RackDbContext> dbContext = ContainerUtils.AutofacServiceProvider.GetRequiredService<IDbContextFactory<RackDbContext>>();
-            using (var ctx = dbContext.CreateDbContext())
-            {
+            try {
 
-                if (sendState == 0)
+                using (var ctx = dbContext.CreateDbContext())
                 {
-                    var message = new DispatchMessage
+
+                    if (sendState == 0)
                     {
-                        RackId = string.Join(",", request.ApiReqData.Select(f => f.RackId).ToList()),
-                        RequestId = request.ApiReqHeader.RequestId,
-                        Message = jsonRequest,
-                        RespMessage = respMessage,
-                        Status = sendState,
-                        BizStatus = request.ApiReqData[0].Status,
-                        TaskId = taskId,
-                        PostCount = 1,
-                        IOStatus = "O"
-                    };
-                    message.saveInit();
-                    message.Id = IdUtils.Id + "";
-                    ctx.Insert(message);
-                }
-                if (sendState == 1)
-                {
-                    var message = new DispatchMessageHis
+                        var message = new DispatchMessage
+                        {
+                            RackId = string.Join(",", request.ApiReqData.Select(f => f.RackId).ToList()),
+                            RequestId = request.ApiReqHeader.RequestId,
+                            Message = jsonRequest,
+                            RespMessage = respMessage,
+                            Status = sendState,
+                            BizStatus = request.ApiReqData[0].Status,
+                            TaskId = taskId,
+                            PostCount = 1,
+                            IOStatus = "O"
+                        };
+                        message.saveInit();
+                        message.Id = IdUtils.Id + "";
+                        ctx.Insert(message);
+                    }
+                    if (sendState == 1)
                     {
-                        RackId = string.Join(",", request.ApiReqData.Select(f => f.RackId).ToList()),
-                        RequestId = request.ApiReqHeader.RequestId,
-                        Message = jsonRequest,
-                        RespMessage = respMessage,
-                        Status = sendState,
-                        BizStatus = request.ApiReqData[0].Status,
-                        TaskId = taskId,
-                        PostCount = 1,
-                        IOStatus = "O"
-                    };
-                    message.saveInit();
-                    message.Id = IdUtils.Id + "";
-                    ctx.Insert(message);
+                        var message = new DispatchMessageHis
+                        {
+                            RackId = string.Join(",", request.ApiReqData.Select(f => f.RackId).ToList()),
+                            RequestId = request.ApiReqHeader.RequestId,
+                            Message = jsonRequest,
+                            RespMessage = respMessage,
+                            Status = sendState,
+                            BizStatus = request.ApiReqData[0].Status,
+                            TaskId = taskId,
+                            PostCount = 1,
+                            IOStatus = "O"
+                        };
+                        message.saveInit();
+                        message.Id = IdUtils.Id + "";
+                        ctx.Insert(message);
+                    }
                 }
+            } catch (Exception ex) {
+                string ack = result ? "成功" : "失败";
+                Logger.Info($"发送WMS报文{ack}，但是落地本地库失败 Request:{jsonRequest},返回:{respMessage},{ex.Message}");
+
             }
 
+            return result;
         }
         /// <summary>
         /// 解析响应

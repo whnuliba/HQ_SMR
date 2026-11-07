@@ -10,5 +10,6 @@ namespace IDS.HQ.Service.IService
     public interface IRackService : IDbBaseService<Rack>
     {
         public IdsResult<List<Rack>> GetAllRackNode();
+        public IdsResult<object> UpdateRackInfo(Rack rack);
     }
 }
