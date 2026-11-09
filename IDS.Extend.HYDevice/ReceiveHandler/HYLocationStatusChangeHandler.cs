@@ -343,7 +343,7 @@ namespace IDS.Extend.HYDevice.ReceiveHandler
                                  OperateType = "IllegalRackDown",
                                  PpId = rackinfoload.PPID,
                                  LedId = (locationInfo.Addr + "").PadLeft(4, '0'),
-                                 IsLegal = 1+"",
+                                 IsLegal = 0+"",
                                  RackId = rackinfoload.RackNo,
                                  Status = 0+"", //状态：1-上架，0-下架
                                  TimeStamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture),
