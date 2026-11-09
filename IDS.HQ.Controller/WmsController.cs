@@ -148,7 +148,7 @@ namespace IDS.HQ.Controller
 
         [HttpPost]
         [Route("GetShelfStatus")]
-        public RackInfoResponse GetRackStatus(RackInfoRequest request) {
+        public async Task<RackInfoResponse> GetRackStatus(RackInfoRequest request) {
             int code = 0;
             string message = string.Empty;
             if (request == null && string.IsNullOrEmpty(request.RackId)) {
@@ -179,6 +179,8 @@ namespace IDS.HQ.Controller
               SessionId = request.SessionId,
               RackId = request.RackId
             };
+            await TaskReturnWmsDispatchHandler.Instance.SendLocationInfoChange(request, resp, 1, "0");
+
             return resp;
         }
 
@@ -257,7 +259,7 @@ namespace IDS.HQ.Controller
         /// </summary>
         [HttpPost]
         [Route("GetShelfAlarmInfo")]
-        public ShelfAlarmInfoResponse GetShelfAlarmInfo(ShelfAlarmInfoRequest request)
+        public async Task<ShelfAlarmInfoResponse> GetShelfAlarmInfo(ShelfAlarmInfoRequest request)
         {
             var response = new ShelfAlarmInfoResponse();
 
@@ -297,6 +299,8 @@ namespace IDS.HQ.Controller
                 response.Code = -1;
                 // 如需要可记录日志
             }
+           await TaskReturnWmsDispatchHandler.Instance.SendLocationInfoChange(request, response, 1, "0");
+
             return response;
         }
     }

@@ -286,6 +286,10 @@ namespace IDS.Extend.HYDevice.ReceiveHandler
         public void IllegalDown(RackNode rackNode, LocationInfo locationInfo) {
             IDbContextFactory<RackDbContext> dbContext = ContainerUtils.GetRequiredService<IDbContextFactory<RackDbContext>>();
             IdsRedis RedisClient = ContainerUtils.GetRequiredService<IdsRedis>();
+            string IllegalDownNeedSendWmsStr = AppConfig.GetConfigInfo("HQ_SMR:IllegalDownNeedSendWms") ?? "true";
+            bool.TryParse(IllegalDownNeedSendWmsStr, out bool IllegalDownNeedSendWms);
+            if (!IllegalDownNeedSendWms)
+                return;
             //不在出库队列，需要同货架料盘做移除处理
             using (var ctx = dbContext.CreateDbContext())
             {
@@ -331,8 +335,7 @@ namespace IDS.Extend.HYDevice.ReceiveHandler
                         }
 
                         #region 处理发送给WMS的下架逻辑,通过参数配置确认是否需要发送给WMS
-                        string IllegalDownNeedSendWmsStr =  AppConfig.GetConfigInfo("HQ_SMR:IllegalDownNeedSendWms")??"true";
-                        bool.TryParse(IllegalDownNeedSendWmsStr, out bool IllegalDownNeedSendWms);
+                     
                         if (IllegalDownNeedSendWms) {
                             var sendWms = new List<LocationInfoChangeData>
                             {
