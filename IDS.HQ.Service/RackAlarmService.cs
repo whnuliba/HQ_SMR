@@ -35,7 +35,25 @@ namespace IDS.HQ.Service
             using (var ctx = DbContext())
             {
                 var alarms = ctx.RackAlarm
-                    .Where(a => a.RackNo == rackNo)
+                    .Where(a => a.RackNo == rackNo && a.HandleState==0)
+                    .OrderByDescending(a => a.CreateTime)
+                    .ToList();
+
+                return IdsResult<List<RackAlarm>>.ok(alarms);
+            }
+        }
+
+        public IdsResult<List<RackAlarm>> GetByRackNo(string rackNo,string side)
+        {
+            if (string.IsNullOrWhiteSpace(rackNo))
+            {
+                return IdsResult<List<RackAlarm>>.failure("料架号不能为空");
+            }
+
+            using (var ctx = DbContext())
+            {
+                var alarms = ctx.RackAlarm
+                    .Where(a => a.RackNo == rackNo && a.RackSide== side && a.HandleState == 0)
                     .OrderByDescending(a => a.CreateTime)
                     .ToList();
 

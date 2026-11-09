@@ -229,7 +229,7 @@ namespace IDS.Extend.HYDevice.ReceiveHandler
                                 if (dto != null && dto.Locations != null && dto.Locations.Count > 0)
                                 {
                                     dto.CreateTime = DateTime.Now;
-                                    dto.Locations.Remove(LocationUtils.SmrToDevice(locationInfo.Addr));//这里的储位就是货架的物理地址
+                                    dto.Locations.Remove(locationInfo.Addr);//这里的储位就是货架的物理地址
                                     RedisClient.GetDatabase().StringSet(string.Format(HYConstant.CurrentLightWithUpKey, rackNode.No, rackNode.RackSide), JsonConvert.SerializeObject(dto), TimeSpan.FromHours(2)); //记录正在亮灯的地址
                                 }
                             }
@@ -251,7 +251,7 @@ namespace IDS.Extend.HYDevice.ReceiveHandler
                             if (locs != null && locs.Locations != null && locs.Locations.Count > 0)
                             {
                                 locs.CreateTime = DateTime.Now;
-                                locs.Locations.Remove(LocationUtils.SmrToDevice(locationInfo.Addr));//这里的储位就是货架的物理地址
+                                locs.Locations.Remove(locationInfo.Addr);//这里的储位就是货架的物理地址
                                 RedisClient.GetDatabase().StringSet(string.Format(HYConstant.CurrentLightWithUpKey, rackNode.No, rackNode.RackSide), JsonConvert.SerializeObject(locs), TimeSpan.FromHours(2)); //记录正在亮灯的地址
                             }
                         }

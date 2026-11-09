@@ -22,6 +22,10 @@ namespace IDS.HQ.Service.Adapter
             return _service.GetByRackNo(rackNo);
         }
 
+        public IdsResult<List<RackAlarm>> GetByRackNo(string rackNo, string side) {
+            return _service.GetByRackNo(rackNo, side);
+        }
+
         public IdsResult<RackAlarm> GetByTaskId(string taskId)
         {
             return _service.GetByTaskId(taskId);

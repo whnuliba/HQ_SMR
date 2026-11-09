@@ -230,8 +230,8 @@ namespace IDS.HQ.Service
                 else
                     predicate = predicate.And(f => trayNum.Contains(f.PPID));
             }
-            orderBydesc = f => f.CreateTime;
-            return base.List(page, predicate, null, orderBydesc);
+            orderby = f => f.Location;
+            return base.List(page, predicate, orderby, orderBydesc);
         }
 
         public List<RackInfo> GetRackStatus(string rackNo)

@@ -11,7 +11,10 @@ namespace IDS.HQ.Service.IService
         /// 根据料架号获取报警列表
         /// </summary>
         public IdsResult<List<RackAlarm>> GetByRackNo(string rackNo);
-
+        /// <summary>
+        /// 根据料架号获取报警列表
+        /// </summary>
+        public IdsResult<List<RackAlarm>> GetByRackNo(string rackNo,string side);
         /// <summary>
         /// 根据任务ID获取报警信息
         /// </summary>

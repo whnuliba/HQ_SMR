@@ -241,6 +241,73 @@ namespace IDS.HQ.Module.DTO
         public string SessionId { get; set; }
     }
 
+    /// <summary>
+    /// 查询料架告警信息请求
+    /// </summary>
+    public class ShelfAlarmInfoRequest
+    {
+        /// <summary>
+        /// 料架ID
+        /// </summary>
+        [JsonPropertyName("RackId")]
+        [JsonProperty("RackId")]
+        public string RackId { get; set; }
+
+        /// <summary>
+        /// 料架面别 A/B
+        /// </summary>
+        [JsonPropertyName("RackSide")]
+        [JsonProperty("RackSide")]
+        public string RackSide { get; set; }
+    }
+
+    /// <summary>
+    /// 告警明细
+    /// </summary>
+    public class ShelfAlarmItem
+    {
+        /// <summary>
+        /// 料盘ID（储位无库存时可为空）
+        /// </summary>
+        [JsonPropertyName("ppid")]
+        [JsonProperty("ppid")]
+        public string Ppid { get; set; }
+
+        /// <summary>
+        /// 储位号
+        /// </summary>
+        [JsonPropertyName("stockId")]
+        [JsonProperty("stockId")]
+        public string StockId { get; set; }
+
+        /// <summary>
+        /// 告警类型：入库/自检/出库
+        /// </summary>
+        [JsonPropertyName("alarmType")]
+        [JsonProperty("alarmType")]
+        public string AlarmType { get; set; }
+    }
+
+    /// <summary>
+    /// 查询料架告警信息响应
+    /// </summary>
+    public class ShelfAlarmInfoResponse
+    {
+        /// <summary>
+        /// 0 成功，-1 异常
+        /// </summary>
+        [JsonPropertyName("code")]
+        [JsonProperty("code")]
+        public int Code { get; set; }
+
+        /// <summary>
+        /// 告警明细列表
+        /// </summary>
+        [JsonPropertyName("message")]
+        [JsonProperty("message")]
+        public List<ShelfAlarmItem> Message { get; set; } = new List<ShelfAlarmItem>();
+    }
+
     public class WmsOutBoundRequest
     {
 

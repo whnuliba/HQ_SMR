@@ -29,6 +29,8 @@ namespace IDS.HQ.Controller
         public RackTaskAdapter rackTaskAdapter { get; set; }
         public RackInfoAdapter rackInfoAdapter { get; set; }
         public IdsRedisLock IdsRedisLock { get; set; }
+        public RackAlarmAdapter rackAlarmAdapter { get; set; }
+       
 
         [HttpPost]
         [Route("UpRackCMD")]
@@ -246,6 +248,55 @@ namespace IDS.HQ.Controller
             });
             await TaskReturnWmsDispatchHandler.Instance.SendLocationInfoChange(data, response, 1, "0");
 
+            return response;
+        }
+
+        /// <summary>
+        /// 查询料架告警信息
+        /// 请求地址：料架IP/API/GetShelfAlarmInfo
+        /// </summary>
+        [HttpPost]
+        [Route("GetShelfAlarmInfo")]
+        public ShelfAlarmInfoResponse GetShelfAlarmInfo(ShelfAlarmInfoRequest request)
+        {
+            var response = new ShelfAlarmInfoResponse();
+
+            // 参数校验
+            if (request == null || string.IsNullOrWhiteSpace(request.RackId))
+            {
+                response.Code = -1;
+                // 如需在异常时也返回 message 数组，可放入一条提示
+                // response.Message.Add(new ShelfAlarmItem { AlarmType = "上传参数不能为空" });
+                return response;
+            }
+
+            if (string.IsNullOrWhiteSpace(request.RackSide))
+            {
+                response.Code = -1;
+                return response;
+            }
+
+            try
+            {
+                //获取报警信息
+                //直接获取redis即可
+                var res = rackAlarmAdapter.GetByRackNo(request.RackId, request.RackSide);
+                if (res.Success) {
+                    var data = res.Data;
+                    if (res.Data!=null &&res.Data.Count > 0) {
+                      var message =   res.Data.Select(item => {
+                            return new ShelfAlarmItem { AlarmType = item.AlarmType == 0 ? "入库" : item.AlarmType == 1 ? "出库" : "自检" };
+                        });
+                        response.Message = message.ToList();
+                    }
+                }
+                response.Code = 0;
+            }
+            catch (Exception ex)
+            {
+                response.Code = -1;
+                // 如需要可记录日志
+            }
             return response;
         }
     }
