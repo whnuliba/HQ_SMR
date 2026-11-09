@@ -82,19 +82,19 @@ namespace IDS.HQ.Service.Job
                                     try
                                     {
                                         //清除Redis上的任务
-                                        string json = _idsRedis.GetDatabase().StringGet(HYConstant.CheckPutwayKey + rack + ":" + side);
+                                        string json = _idsRedis.GetDatabase().StringGet(string.Format( HYConstant.CurrentLightWithUpKey , rack ,side));
                                         if (!string.IsNullOrEmpty(json))
                                         {
                                             RackLocationTaskDto dto = JsonConvert.DeserializeObject<RackLocationTaskDto>(json);
                                             if (dto != null && dto.Locations != null && dto.Locations.Count > 0)
                                             {
-                                                if (dto.CreateTime + TimeSpan.FromMinutes(3) < DateTime.Now)
+                                                if (dto.CreateTime.AddMinutes(3) < DateTime.Now)
                                                 {
-                                                    dto.CreateTime = DateTime.Now;
-                                                    List<int> leds = dto.Locations.Select(f => f ?? 0).ToList();
+                                                   // dto.CreateTime = DateTime.Now;
+                                                    List<int> leds = dto.Locations.Select(f => LocationUtils.SmrToDevice(f??0)).ToList();
                                                     byte[] message = DeviceMessage.GetMultiLightOffMessage(leds);
                                                     SmartMaterialRackNode.Instance.NoticeRack(rack, message);
-                                                    _idsRedis.GetDatabase().KeyDelete(HYConstant.CheckPutwayKey + rack + ":" + side);
+                                                    _idsRedis.GetDatabase().KeyDelete(string.Format(HYConstant.CurrentLightWithUpKey, rack, side));
                                                 }
                                             }
                                         }

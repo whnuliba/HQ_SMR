@@ -246,12 +246,13 @@ namespace IDS.HQ.Service
                         {
                             rackTask.TaskState = (int)TaskStates.DOWN_WAIT;
                             rackTask.TaskType = (int)TaskTypes.OUT;
+                            rackTask.OperateType = rackTask.OperateType;
                             rackTask.saveInit();
                             ctx.Insert(rackTask);
                             //存入到redis
 
                             RedisClient.GetDatabase().HashSet(_checkOutboundKey + rackTask.RackNo, hashFields);
-                            Dictionary<int, byte>? dic = allowDowns.ToDictionary(k => k, v => (byte)LightColor.Red);
+                            Dictionary<int, byte>? dic = allowDowns.ToDictionary(k => k, v => (byte)LightColor.Green);
                             //发送亮灯信息
                             SmartMaterialRackNode.Instance.NoticeRackMultiLightOn(rackTask.RackNo, dic);
                             ts.Commit();
@@ -391,7 +392,7 @@ namespace IDS.HQ.Service
                 {
                     var task = ctx.RackTask.Where(f => f.Id == rackTask.Id).FirstOrDefault();
                     if (task != null)
-                        rackTask.Locations = task.Locations; ;
+                        rackTask.Locations = task.Locations;
                 }
                 if (string.IsNullOrEmpty(rackTask.Locations))
                     return IdsResult<RackTask>.failure($"没有下发需要取消的储位号,货架:{rackTask.RackNo}");
@@ -487,6 +488,7 @@ namespace IDS.HQ.Service
                             cancelTask.updateInit();
                             ctx.Insert(cancelTask);
                             ctx.Remove(task);
+                            
                             ctx.SaveChanges();
                             var matl = ctx.Query<MaterialInfo>(f => f.TaskId == task.Id).FirstOrDefault();
                             var matlHis = new MaterialInfoHis();
@@ -497,6 +499,7 @@ namespace IDS.HQ.Service
                                 Logger.Error($"任务取消失败，物料信息归档错误,货架:{rackTask.RackNo},面:{rackTask.RackSide},任务号:{task.Id}");
                                 throw new BussinessException($"任务取消失败，物料信息归档错误,货架:{rackTask.RackNo},面:{rackTask.RackSide},任务号:{task.Id}");
                             }
+                            ctx.Delete<MaterialInfo>(f=>f.Id == matl.Id);
                             //检查当前位置信息是空的货架
                             List<int?> allowLight = (from light in ctx.RackInfo
                                                      where light.RackNo == rackTask.RackNo

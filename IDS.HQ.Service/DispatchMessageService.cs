@@ -55,7 +55,7 @@ namespace IDS.HQ.Service
                     predicate = predicate.And(f => f.CreateTime <= upload.EndTime);
             }
             orderBydesc = f=>f.CreateTime;
-           return base.List(page, predicate, orderby, orderBydesc);
+           return base.List(page, predicate, null, orderBydesc);
 
         }
 

@@ -90,7 +90,7 @@ namespace IDS.Persistence
             using (var ctx = DbContext())
             {
                 var req = page.requestData;
-                var data =  ctx.Query<T>(predicate).Skip((page.current-1)*page.pageSize).Take(page.pageSize);
+                var data = ctx.Query<T>(predicate);
                 if (orderby != null)
                 {
                     data = data.OrderBy(orderby);
@@ -99,6 +99,7 @@ namespace IDS.Persistence
                 {
                     data = data.OrderByDescending(orderBydesc);
                 }
+                data = data.Skip((page.current - 1) * page.pageSize).Take(page.pageSize);
                 var list = data.ToList();
                 var count = ctx.Count<T>(predicate);
                 Page<T> page1 = new Page<T>(count, list, page.pageSize, page.current);
@@ -111,7 +112,7 @@ namespace IDS.Persistence
             using (var ctx = DbContext())
             {
                 var req = page.requestData;
-                var data = ctx.Query<T>(predicate).Skip((page.current - 1) * page.pageSize).Take(page.pageSize);
+                var data = ctx.Query<T>(predicate);
                 if (orderby != null) {
                     data = data.OrderBy(orderby);
                 }
@@ -119,6 +120,7 @@ namespace IDS.Persistence
                 {
                     data = data.OrderByDescending(orderBydesc);
                 }
+                data = data.Skip((page.current - 1) * page.pageSize).Take(page.pageSize);
                 var list =  data.ToList();
                 var count = ctx.Count<T>(predicate);
                 Page<T> page1 = new Page<T>(count, list, page.pageSize, page.current);

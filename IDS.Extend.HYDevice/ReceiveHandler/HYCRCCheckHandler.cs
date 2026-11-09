@@ -18,7 +18,7 @@ namespace IDS.Extend.HYDevice.ReceiveHandler
 
         public override IdsResult<object> Handle<E>(byte[] data, IdsSession session, DeviceCommand<E> command)
         {
-            throw new NotImplementedException();
+            return IdsResult<object>.ok();
         }
     }
 }

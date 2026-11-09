@@ -124,8 +124,7 @@ namespace IDS.HQ.Controller
                 return ResponseEntity<RackTask>.Success(res.Data);
             else return ResponseEntity<RackTask>.Error(res.Message);
         }
-
-        [HttpPost]
+    [HttpPost]
         [Route("ForceCompleteTask")]
         public ResponseEntity<RackTask> ForceCompleteTask(RequestData<RackTask> data)
         {
@@ -136,6 +135,7 @@ namespace IDS.HQ.Controller
                 return ResponseEntity<RackTask>.Success(res.Data);
             else return ResponseEntity<RackTask>.Error(res.Message);
         }
+    
         //ResetDownLightOn 
         [HttpPost]
         [Route("ResetDownLightOn")]

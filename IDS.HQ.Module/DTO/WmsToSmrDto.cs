@@ -243,8 +243,12 @@ namespace IDS.HQ.Module.DTO
 
     public class WmsOutBoundRequest
     {
-        [JsonPropertyName("RackCmd")]
-        [JsonProperty("RackCmd")]
+
+        [JsonPropertyName("OperateType")]
+        [JsonProperty("OperateType")]
+        public string OperateType  {set; get;}
+        [JsonPropertyName("Rack_CMD")]
+        [JsonProperty("Rack_CMD")]
         public string RackCmd { set; get; }// ": "Down",     --"Down"=请求下架命令  --"Down_end"=请求下架结束  
 
         [JsonPropertyName("RackClass")]

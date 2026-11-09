@@ -211,7 +211,7 @@ namespace IDS.Extend.HYDevice.ReceiveHandler
                     };
                        bool sendWmsFlag =  TaskReturnWmsDispatchHandler.Instance.SendLocationInfoChange<LocationInfoChangeData>(sendWms, uptasktask.Id);
                         //上架若发送MES失败，回滚。发送报警闪烁灯
-                        if (sendWmsFlag) {
+                        if (!sendWmsFlag) {
                             byte[] message = DeviceMessage.GetSingleLightFlashMessage(
                                                5,
                                                 LocationUtils.SmrToDevice(locationInfo.Addr),
@@ -219,6 +219,20 @@ namespace IDS.Extend.HYDevice.ReceiveHandler
                             SmartMaterialRackNode.Instance.NoticeRack(uptasktask.RackNo, message);
                             //回滚日志
                             ts.Rollback();
+
+                            //处理灭灯
+                            //清除Redis上的任务
+                            string json1 = RedisClient.GetDatabase().StringGet(HYConstant.CheckPutwayKey + rackNode.No + ":" + rackNode.RackSide);
+                            if (!string.IsNullOrEmpty(json1))
+                            {
+                                RackLocationTaskDto dto = JsonConvert.DeserializeObject<RackLocationTaskDto>(json1);
+                                if (dto != null && dto.Locations != null && dto.Locations.Count > 0)
+                                {
+                                    dto.CreateTime = DateTime.Now;
+                                    dto.Locations.Remove(LocationUtils.SmrToDevice(locationInfo.Addr));//这里的储位就是货架的物理地址
+                                    RedisClient.GetDatabase().StringSet(string.Format(HYConstant.CurrentLightWithUpKey, rackNode.No, rackNode.RackSide), JsonConvert.SerializeObject(dto), TimeSpan.FromHours(2)); //记录正在亮灯的地址
+                                }
+                            }
                             return IdsResult<object>.failure($"货架{uptasktask.RackNo} 储位{locationInfo.Addr}上传WMS失败");
                         }
                         #endregion
@@ -233,17 +247,24 @@ namespace IDS.Extend.HYDevice.ReceiveHandler
                             //
                             byte[] message = DeviceMessage.GetSingleLightOffMessage(LocationUtils.SmrToDevice(locationInfo.Addr));
                             SmartMaterialRackNode.Instance.NoticeRack(rackNode.No, message);
-                        }
-                        //清除Redis上的任务
-                       string json = RedisClient.GetDatabase().StringGet(HYConstant.CheckPutwayKey + rackNode.No + ":" + rackNode.RackSide);
-                        if (!string.IsNullOrEmpty(json)) {
-                            RackLocationTaskDto dto = JsonConvert.DeserializeObject<RackLocationTaskDto>(json);
-                            if (dto != null && dto.Locations!=null && dto.Locations.Count>0) {
-                                dto.CreateTime = DateTime.Now;
-                                dto.Locations.Remove(LocationUtils.SmrToDevice(locationInfo.Addr));//这里的储位就是货架的物理地址
-                                RedisClient.GetDatabase().StringSet(string.Format(HYConstant.CurrentLightWithUpKey, rackNode.No, rackNode.RackSide), JsonConvert.SerializeObject(dto),TimeSpan.FromHours(2)); //记录正在亮灯的地址
+
+                            if (locs != null && locs.Locations != null && locs.Locations.Count > 0)
+                            {
+                                locs.CreateTime = DateTime.Now;
+                                locs.Locations.Remove(LocationUtils.SmrToDevice(locationInfo.Addr));//这里的储位就是货架的物理地址
+                                RedisClient.GetDatabase().StringSet(string.Format(HYConstant.CurrentLightWithUpKey, rackNode.No, rackNode.RackSide), JsonConvert.SerializeObject(locs), TimeSpan.FromHours(2)); //记录正在亮灯的地址
                             }
                         }
+                        //清除Redis上的任务
+                       //string json = RedisClient.GetDatabase().StringGet(HYConstant.CheckPutwayKey + rackNode.No + ":" + rackNode.RackSide);
+                       // if (!string.IsNullOrEmpty(json)) {
+                       //     RackLocationTaskDto dto = JsonConvert.DeserializeObject<RackLocationTaskDto>(json);
+                       //     if (dto != null && dto.Locations!=null && dto.Locations.Count>0) {
+                       //         dto.CreateTime = DateTime.Now;
+                       //         dto.Locations.Remove(LocationUtils.SmrToDevice(locationInfo.Addr));//这里的储位就是货架的物理地址
+                       //         RedisClient.GetDatabase().StringSet(string.Format(HYConstant.CurrentLightWithUpKey, rackNode.No, rackNode.RackSide), JsonConvert.SerializeObject(dto),TimeSpan.FromHours(2)); //记录正在亮灯的地址
+                       //     }
+                       // }
                         RedisClient.GetDatabase().KeyDelete(HYConstant.CheckPutwayKey + rackNode.No + ":" + rackNode.RackSide);
                         ts.Commit();
                     }
@@ -477,7 +498,7 @@ namespace IDS.Extend.HYDevice.ReceiveHandler
                     };
                        bool ackFlag = TaskReturnWmsDispatchHandler.Instance.SendLocationInfoChange<LocationInfoChangeData>(sendWms, uptasktask.Id);
                         //上架若发送MES失败，回滚。发送报警闪烁灯
-                        if (ackFlag)
+                        if (!ackFlag)
                         {
                             byte[] sendmessage = DeviceMessage.GetSingleLightFlashMessage(
                                                5,
@@ -485,8 +506,8 @@ namespace IDS.Extend.HYDevice.ReceiveHandler
                                                (int)LightColor.Red);
                             SmartMaterialRackNode.Instance.NoticeRack(uptasktask.RackNo, sendmessage);
                             //回滚日志
-                           // ts.Rollback();
-                           // return IdsResult<object>.failure($"货架{uptasktask.RackNo} 储位{locationInfo.Addr}上传WMS失败");
+                            transaction.Rollback();
+                            return IdsResult<object>.failure($"货架{uptasktask.RackNo} 储位{locationInfo.Addr}上传WMS失败");
                         }
                         #endregion
                         //发送灭灯

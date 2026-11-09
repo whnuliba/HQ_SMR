@@ -2,6 +2,7 @@
 using IDS.Base.Utils;
 using IDS.Common;
 using IDS.Common.Utils;
+using IDS.Device.Communication;
 using IDS.Extend.HYDevice;
 using IDS.Extend.HYDevice.Dispatch;
 using IDS.Extend.HYDevice.DTO;
@@ -134,6 +135,7 @@ namespace IDS.HQ.Controller
                 rackTask.ExtendId = wmsOutBound.SessionId;
                 rackTask.Locations = string.Join(",", rack.Value);
                 rackTask.AfterLightColor = wmsOutBound.LightColor;
+                rackTask.OperateType = wmsOutBound.OperateType;
                 IdsResult<RackTask> res = rackTaskAdapter.Outbound(rackTask);
                 message.Append(res.Message).Append(";");
             }
@@ -160,7 +162,7 @@ namespace IDS.HQ.Controller
             {
                 return new CellInfo
                 {
-                    CellId = f.Location,
+                    CellId = f.Location??0,
                     Side = f.RackSide,
                     Status = f.Loading,
                     Ppid = f.PPID
@@ -180,7 +182,7 @@ namespace IDS.HQ.Controller
 
         [HttpPost]
         [Route("CancelAlarm")]
-        public WmsCancelAlarmResponse AlarmLightDown(WmsCancelAlarm data)
+        public async Task<WmsCancelAlarmResponse> AlarmLightDown(WmsCancelAlarm data)
         {
             var response = new WmsCancelAlarmResponse();
             response.Code = 0;
@@ -242,6 +244,8 @@ namespace IDS.HQ.Controller
                     response.Message = ["超时未收到设备取消成功的反馈"];
                 }
             });
+            await TaskReturnWmsDispatchHandler.Instance.SendLocationInfoChange(data, response, 1, "0");
+
             return response;
         }
     }
