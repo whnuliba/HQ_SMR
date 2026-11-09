@@ -88,19 +88,20 @@ namespace IDS.HQ.Service.Job
                                        }
 
                                    }
-
+                                   start.Stop();
+                                   Logger.Info($"{rack.RackNo} 盘点完成{start.ElapsedMilliseconds}!");
                                });
                                
                            }
                            catch (Exception ex)
                            {
                                start.Stop();
-                               Logger.Error($"{rack.RackNo} 盘点完成!：{ex.Message}");
+                               Logger.Error($"{rack.RackNo} 盘点完成[{start.ElapsedMilliseconds}]!：{ex.Message}");
 
                            }
                            finally {
                                start.Stop();
-                               Logger.Info($"{rack.RackNo} 盘点完成!");
+                               Logger.Info($"{rack.RackNo} 盘点完成{start.ElapsedMilliseconds}!");
                            }
          
                        });

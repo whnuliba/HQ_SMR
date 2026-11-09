@@ -104,6 +104,8 @@ public partial class Program
         builder.Services.AddHostedService<CleanMaterialInfoJob>();
         builder.Services.AddHostedService<CleanRackTaskJob>(); 
         builder.Services.AddHostedService<AutoLightOffJob>();
+        builder.Services.AddHostedService<LocationCheckJob>();
+
         var app = builder.Build();
         app.UseWebSockets();
         // Configure the HTTP request pipeline.

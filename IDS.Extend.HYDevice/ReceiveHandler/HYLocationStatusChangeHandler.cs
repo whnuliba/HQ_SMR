@@ -340,7 +340,7 @@ namespace IDS.Extend.HYDevice.ReceiveHandler
                             var sendWms = new List<LocationInfoChangeData>
                             {
                                 new LocationInfoChangeData{
-                                 OperateType = "Down",
+                                 OperateType = "IllegalRackDown",
                                  PpId = rackinfoload.PPID,
                                  LedId = (locationInfo.Addr + "").PadLeft(4, '0'),
                                  IsLegal = 1+"",
